@@ -1,0 +1,56 @@
+version: '3.8'
+
+services:
+  # 1. PostgreSQL - Primary Database
+  postgres:
+    image: postgres:15-alpine
+    container_name: livebid_postgres
+    ports:
+      - "5432:5432"
+    environment:
+      POSTGRES_DB: livebid
+      POSTGRES_USER: admin
+      POSTGRES_PASSWORD: password
+    volumes:
+      - postgres_data:/var/lib/postgresql/data
+
+  # 2. Redis - Caching, Locks, Pub/Sub
+  redis:
+    image: redis:7-alpine
+    container_name: livebid_redis
+    ports:
+      - "6379:6379"
+
+  # 3. MinIO - S3 Compatible Storage (for Images)
+  minio:
+    image: minio/minio
+    container_name: livebid_minio
+    ports:
+      - "9000:9000"
+      - "9001:9001"
+    environment:
+      MINIO_ROOT_USER: minio_admin
+      MINIO_ROOT_PASSWORD: minio_password
+    command: server /data --console-address ":9001"
+    volumes:
+      - minio_data:/data
+
+  # 4. LiveBid Application (Backend)
+  app:
+    build: .
+    container_name: livebid_api
+    ports:
+      - "8080:8080"
+    environment:
+      SPRING_DATASOURCE_URL: jdbc:postgresql://postgres:5432/livebid
+      SPRING_DATASOURCE_USERNAME: admin
+      SPRING_DATASOURCE_PASSWORD: password
+      SPRING_DATA_REDIS_HOST: redis
+      SPRING_DATA_REDIS_PORT: 6379
+    depends_on:
+      - postgres
+      - redis
+
+volumes:
+  postgres_data:
+  minio_data:

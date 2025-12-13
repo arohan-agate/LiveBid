@@ -1,0 +1,11 @@
+package com.livebid.auction.repository;
+
+import com.livebid.auction.model.Auction;
+import com.livebid.auction.model.AuctionStatus;
+import org.springframework.data.jpa.repository.JpaRepository;
+import java.util.List;
+import java.util.UUID;
+
+public interface AuctionRepository extends JpaRepository<Auction, UUID> {
+    List<Auction> findByStatus(AuctionStatus status);
+}
