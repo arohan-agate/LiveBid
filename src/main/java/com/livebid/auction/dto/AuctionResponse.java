@@ -14,6 +14,7 @@ public class AuctionResponse {
     private String title;
     private String description;
     private long currentPrice;
+    private UUID currentLeaderId;
     private AuctionStatus status;
     private LocalDateTime startTime;
     private LocalDateTime endTime;

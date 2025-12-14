@@ -42,6 +42,12 @@ public class Auction {
 
     private LocalDateTime endTime;
 
+    @Column(name = "current_leader_id")
+    private UUID currentLeaderId;
+
+    @Column(name = "current_leader_bid_id")
+    private UUID currentLeaderBidId;
+
     @Version // Optimistic Locking
     private Long version;
 }
