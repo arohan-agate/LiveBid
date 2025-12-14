@@ -30,12 +30,31 @@ src/main/java/com/livebid
 └── LiveBidApplication.java
 ```
 
-## Phase 1 Instructions: Foundation
-Your goal is to implement the Core Data Model and Basic CRUD.
-1.  Review the `User` and `Auction` entities.
-2.  Implement `UserService.createUser` (with toy balance).
-3.  Implement `AuctionService.createAuction` (Draft state).
-4.  Verify via proper Integration Tests or `curl`.
+## Project Status
+**Current Phase**: Phase 2 Complete (Bidding Engine)
+
+### Implemented Features
+*   **User Management**: create users, balance tracking (funds reservation).
+*   **Auction Management**: create auctions, schedule times.
+*   **Bidding Engine**:
+    *   Transactional bidding with pessimistic locking.
+    *   Escrow system (reserve funds, refund outbid users).
+    *   Automatic state updates.
+*   **Verification**: Python CLI for simulating bidding wars.
+
+## Getting Started
+
+### 1. Infrastructure
+Start the required services (Postgres, Redis, MinIO):
+```bash
+docker-compose up -d
+```
+
+### 2. Run the Application
+You can run via Maven or Docker.
+```bash
+./mvnw spring-boot:run
+```
 
 ## Verification Tools (CLI)
 We include a Python CLI for testing complex flows like "Bidding Wars".
