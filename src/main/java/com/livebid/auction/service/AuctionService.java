@@ -4,7 +4,10 @@ import com.livebid.auction.dto.AuctionResponse;
 import com.livebid.auction.dto.CreateAuctionRequest;
 import com.livebid.auction.model.Auction;
 import com.livebid.auction.model.AuctionStatus;
+import com.livebid.auction.model.Bid;
 import com.livebid.auction.repository.AuctionRepository;
+import com.livebid.auction.repository.BidRepository;
+import com.livebid.user.model.User;
 import com.livebid.user.repository.UserRepository;
 import org.springframework.stereotype.Service;
 import org.springframework.transaction.annotation.Transactional;
@@ -16,10 +19,13 @@ public class AuctionService {
 
     private final AuctionRepository auctionRepository;
     private final UserRepository userRepository;
+    private final BidRepository bidRepository;
 
-    public AuctionService(AuctionRepository auctionRepository, UserRepository userRepository) {
+    public AuctionService(AuctionRepository auctionRepository, UserRepository userRepository,
+            BidRepository bidRepository) {
         this.auctionRepository = auctionRepository;
         this.userRepository = userRepository;
+        this.bidRepository = bidRepository;
     }
 
     @Transactional
@@ -70,5 +76,61 @@ public class AuctionService {
         auctionResponse.setEndTime(auction.getEndTime());
         auctionResponse.setStatus(auction.getStatus());
         return auctionResponse;
+    }
+
+    @Transactional
+    public void convertToLive(UUID auctionId) {
+        Auction auction = auctionRepository.findById(auctionId)
+                .orElseThrow(() -> new RuntimeException("Auction not found"));
+        auction.setStatus(AuctionStatus.LIVE);
+        auctionRepository.save(auction);
+    }
+
+    @Transactional
+    public void placeBid(UUID auctionId, UUID bidderId, long amount) {
+        Auction auction = auctionRepository.findByIdWithLock(auctionId)
+                .orElseThrow(() -> new IllegalStateException("Auction not found"));
+
+        User bidder = userRepository.findByIdWithLock(bidderId)
+                .orElseThrow(() -> new IllegalStateException("Bidder not found"));
+
+        if (auction.getStatus() != AuctionStatus.LIVE) {
+            throw new IllegalStateException("Auction is not live");
+        }
+
+        if (amount <= auction.getCurrentPrice()) {
+            throw new IllegalArgumentException("Bid must be higher than current price: " + auction.getCurrentPrice());
+        }
+
+        if (bidder.getAvailableBalance() < amount) {
+            throw new IllegalArgumentException("Insufficient funds");
+        }
+
+        bidder.setAvailableBalance(bidder.getAvailableBalance() - amount);
+        bidder.setReservedBalance(bidder.getReservedBalance() + amount);
+        userRepository.save(bidder);
+
+        if (auction.getCurrentLeaderId() != null) {
+            User prevLeader = userRepository.findByIdWithLock(auction.getCurrentLeaderId())
+                    .orElseThrow(() -> new IllegalStateException("Data corruption: Leader ID exists but User missing"));
+
+            long refundAmount = auction.getCurrentPrice();
+            prevLeader.setReservedBalance(prevLeader.getReservedBalance() - refundAmount);
+            prevLeader.setAvailableBalance(prevLeader.getAvailableBalance() + refundAmount);
+            userRepository.save(prevLeader);
+        }
+
+        Bid bid = new Bid();
+        bid.setAuctionId(auctionId);
+        bid.setBidderId(bidderId);
+        bid.setAmount(amount);
+        bid.setTimestamp(java.time.LocalDateTime.now());
+        bidRepository.save(bid);
+
+        auction.setCurrentPrice(amount);
+        auction.setCurrentLeaderId(bidderId);
+        auction.setCurrentLeaderBidId(bid.getId());
+        auctionRepository.save(auction);
+
     }
 }

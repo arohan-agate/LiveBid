@@ -5,6 +5,7 @@ import com.livebid.auction.dto.CreateAuctionRequest;
 import com.livebid.auction.service.AuctionService;
 import jakarta.validation.Valid;
 import org.springframework.http.HttpStatus;
+import org.springframework.http.ResponseEntity;
 import org.springframework.web.bind.annotation.*;
 
 import java.util.UUID;
@@ -23,6 +24,12 @@ public class AuctionController {
     @ResponseStatus(HttpStatus.CREATED)
     public AuctionResponse createAuction(@RequestBody @Valid CreateAuctionRequest request) {
         return auctionService.createAuction(request);
+    }
+
+    @PostMapping("/{id}/start")
+    public ResponseEntity<Void> startAuction(@PathVariable UUID id) {
+        auctionService.convertToLive(id);
+        return ResponseEntity.ok().build();
     }
 
     @GetMapping("/{id}")

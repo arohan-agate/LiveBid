@@ -37,6 +37,18 @@ Your goal is to implement the Core Data Model and Basic CRUD.
 3.  Implement `AuctionService.createAuction` (Draft state).
 4.  Verify via proper Integration Tests or `curl`.
 
+## Verification Tools (CLI)
+We include a Python CLI for testing complex flows like "Bidding Wars".
+
+1. Install dependencies:
+   ```bash
+   pip install -r requirements.txt
+   ```
+2. Run the interactive tool:
+   ```bash
+   python cli.py
+   ```
+
 ## Development Rules
 *   **Correctness First**: Ensure DB transactions are respected.
 *   **No Placeholders**: Use `long` for money (cents), not `double`.
