@@ -50,6 +50,30 @@ def create_auction(seller_id):
         print(f"Failed: {res.text}")
         return None
 
+def create_quick_auction(seller_id):
+    now_utc = datetime.utcnow()
+    # Start in 5 seconds, End in 65 seconds
+    start_time = (now_utc + timedelta(seconds=5)).strftime('%Y-%m-%dT%H:%M:%S')
+    end_time = (now_utc + timedelta(seconds=65)).strftime('%Y-%m-%dT%H:%M:%S')
+    
+    payload = {
+        "sellerId": seller_id,
+        "title": "Quick Auction (1 min)",
+        "description": "Quick test auction",
+        "startPrice": 1000,
+        "startTime": start_time,
+        "endTime": end_time
+    }
+    
+    res = requests.post(f"{BASE_URL}/auctions", json=payload)
+    if res.status_code in [200, 201]:
+        auction = res.json()
+        print(f"Quick Auction Created: {auction['title']} (ID: {auction['id']})")
+        return auction
+    else:
+        print(f"Failed: {res.text}")
+        return None
+
 def start_auction(auction_id):
     res = requests.post(f"{BASE_URL}/auctions/{auction_id}/start")
     if res.status_code == 200:
@@ -137,6 +161,8 @@ def main_menu():
         print("4. Place Bid")
         print("5. View Auction")
         print("6. SIMULATE BID WAR")
+        print("7. Create Quick Auction (1 min)")
+        print("8. View User")
         print("0. Exit")
         
         choice = input("\nSelect: ")
@@ -152,13 +178,22 @@ def main_menu():
         elif choice == "4":
             aid = input("Auction ID: ")
             bidder = input("Bidder ID: ")
-            amt = int(input("Amount: "))
-            place_bid(aid, bidder, amt)
+            try:
+                amt = int(input("Amount: "))
+                place_bid(aid, bidder, amt)
+            except ValueError:
+                print("Invalid amount")
         elif choice == "5":
             aid = input("Auction ID: ")
             view_auction(aid)
         elif choice == "6":
             simulate_war()
+        elif choice == "7":
+            sid = input("Seller ID: ")
+            create_quick_auction(sid)
+        elif choice == "8":
+            uid = input("User ID: ")
+            view_user(uid)
         elif choice == "0":
             break
 

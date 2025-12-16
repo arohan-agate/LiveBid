@@ -4,6 +4,8 @@ import org.springframework.context.event.EventListener;
 import org.springframework.data.redis.core.RedisTemplate;
 import org.springframework.messaging.simp.SimpMessagingTemplate;
 import org.springframework.stereotype.Component;
+import org.springframework.transaction.event.TransactionPhase;
+import org.springframework.transaction.event.TransactionalEventListener;
 
 @Component
 public class AuctionEventListener {
@@ -25,5 +27,11 @@ public class AuctionEventListener {
         // 2. Update Redis Cache (Optimization)
         // Key: auction:{id}:price
         redisTemplate.opsForValue().set("auction:" + event.getAuctionId() + ":price", event.getNewPrice());
+    }
+
+    @TransactionalEventListener(phase = TransactionPhase.AFTER_COMMIT)
+    public void handleAuctionClosed(AuctionClosedEvent event) {
+        // Broadcast to WebSocket only after DB commit is successful
+        messagingTemplate.convertAndSend("/topic/auctions/" + event.getAuctionId(), event);
     }
 }

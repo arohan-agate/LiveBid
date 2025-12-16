@@ -3,9 +3,11 @@ package com.livebid.auction.service;
 import com.livebid.auction.dto.AuctionResponse;
 import com.livebid.auction.dto.CreateAuctionRequest;
 import com.livebid.auction.model.Auction;
+import com.livebid.auction.model.AuctionSettlement;
 import com.livebid.auction.model.AuctionStatus;
 import com.livebid.auction.model.Bid;
 import com.livebid.auction.repository.AuctionRepository;
+import com.livebid.auction.repository.AuctionSettlementRepository;
 import com.livebid.auction.repository.BidRepository;
 import com.livebid.user.model.User;
 import com.livebid.user.repository.UserRepository;
@@ -13,6 +15,7 @@ import com.livebid.auction.event.BidPlacedEvent;
 import org.springframework.context.ApplicationEventPublisher;
 import org.springframework.stereotype.Service;
 import org.springframework.transaction.annotation.Transactional;
+import com.livebid.auction.event.AuctionClosedEvent;
 
 import java.util.UUID;
 
@@ -23,13 +26,16 @@ public class AuctionService {
     private final UserRepository userRepository;
     private final BidRepository bidRepository;
     private final ApplicationEventPublisher eventPublisher;
+    private final AuctionSettlementRepository auctionSettlementRepository;
 
     public AuctionService(AuctionRepository auctionRepository, UserRepository userRepository,
-            BidRepository bidRepository, ApplicationEventPublisher eventPublisher) {
+            BidRepository bidRepository, ApplicationEventPublisher eventPublisher,
+            AuctionSettlementRepository auctionSettlementRepository) {
         this.auctionRepository = auctionRepository;
         this.userRepository = userRepository;
         this.bidRepository = bidRepository;
         this.eventPublisher = eventPublisher;
+        this.auctionSettlementRepository = auctionSettlementRepository;
     }
 
     @Transactional
@@ -92,6 +98,7 @@ public class AuctionService {
 
     @Transactional
     public void placeBid(UUID auctionId, UUID bidderId, long amount) {
+
         Auction auction = auctionRepository.findByIdWithLock(auctionId)
                 .orElseThrow(() -> new IllegalStateException("Auction not found"));
 
@@ -100,6 +107,10 @@ public class AuctionService {
 
         if (auction.getStatus() != AuctionStatus.LIVE) {
             throw new IllegalStateException("Auction is not live");
+        }
+
+        if (java.time.LocalDateTime.now().isAfter(auction.getEndTime())) {
+            throw new IllegalStateException("Auction has ended");
         }
 
         if (amount <= auction.getCurrentPrice()) {
@@ -136,6 +147,51 @@ public class AuctionService {
         auction.setCurrentLeaderBidId(bid.getId());
         auctionRepository.save(auction);
 
+        // event for real-time updates
         eventPublisher.publishEvent(new BidPlacedEvent(auctionId, amount, bidderId));
+    }
+
+    @Transactional
+    public void closeAuction(UUID auctionId) {
+
+        int updated = auctionRepository.updateStatusToClosing(auctionId, java.time.LocalDateTime.now());
+        if (updated == 0) {
+            return;
+        }
+
+        Auction auction = auctionRepository.findByIdWithLock(auctionId)
+                .orElseThrow(() -> new IllegalStateException("Auction not found"));
+
+        // If there are no bids, close
+        if (auction.getCurrentLeaderId() == null) {
+            auction.setStatus(AuctionStatus.CLOSED);
+            auctionRepository.save(auction);
+            return;
+        }
+        User winner = userRepository.findByIdWithLock(auction.getCurrentLeaderId())
+                .orElseThrow(() -> new IllegalStateException("Winner not found"));
+
+        User seller = userRepository.findByIdWithLock(auction.getSellerId())
+                .orElseThrow(() -> new IllegalStateException("Seller not found"));
+
+        long closingPrice = auction.getCurrentPrice();
+        if (winner.getReservedBalance() < closingPrice) {
+            throw new IllegalStateException("Winner has insufficient funds");
+        }
+
+        winner.setReservedBalance(winner.getReservedBalance() - closingPrice);
+        userRepository.save(winner);
+
+        seller.setAvailableBalance(seller.getAvailableBalance() + closingPrice);
+        userRepository.save(seller);
+
+        AuctionSettlement auctionSettlement = new AuctionSettlement(auctionId, winner.getId(),
+                seller.getId(), closingPrice);
+        auctionSettlementRepository.save(auctionSettlement);
+
+        auction.setStatus(AuctionStatus.CLOSED);
+        auctionRepository.save(auction);
+
+        eventPublisher.publishEvent(new AuctionClosedEvent(auctionId, winner.getId(), closingPrice));
     }
 }
