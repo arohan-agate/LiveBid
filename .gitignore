@@ -29,3 +29,4 @@ Thumbs.db
 *.log
 logs/
 !/.mvn/wrapper/maven-wrapper.jar
+.env
