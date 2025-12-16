@@ -1,76 +1,70 @@
 # LiveBid - Real-Time Auction Platform
 
-## Project Overview
-This repository contains the backend for the LiveBid auction system.
-It is built with **Java 21**, **Spring Boot 3**, **PostgreSQL**, and **Redis**.
+**LiveBid** is a high-performance, real-time auction system designed for scale and transactional safety. It ensures fair bidding through strict concurrency controls and provides instant feedback via WebSockets.
 
-## Getting Started
+## Key Features
 
-### 1. Infrastructure
-Start the required services (Postgres, Redis, MinIO):
+- **Real-Time Bidding**: Instant updates for all participants via WebSocket.
+- **Financial Safety**: robust escrow system that reserves funds upon bidding and refunds outbid users instantly.
+- **Transactional Integrity**: Pessimistic locking guarantees that no two bids conflict, even under high concurrency.
+- **Automated Settlement**: Auctions close automatically, and funds are transferred to the seller immediately.
+- **Simulation Tools**: Includes a CLI for simulating bidding wars and stress testing the engine.
+
+## Tech Stack
+
+- **Core**: Java 21, Spring Boot 3
+- **Data**: PostgreSQL (Persistence), Redis (Caching & Pub/Sub)
+- **Messaging**: WebSocket
+- **Containerization**: Docker & Docker Compose
+
+## Quick Start
+
+### 1. Prerequisites
+- Docker & Docker Compose
+- Java 21 (optional, for local dev)
+- Python 3 (optional, for CLI)
+
+### 2. Launch Infrastructure
+Start the database and caching services:
 ```bash
 docker-compose up -d
 ```
 
-### 2. Application Structure
-We use a **Modular Monolith** package structure to keep features isolated.
-
-```
-src/main/java/com/livebid
-├── api                 # Shared API (Exceptions, DTO Wrappers)
-├── auction             # Auction Module
-│   ├── controller      # REST API Endpoints
-│   ├── model           # Entities (Auction, Bid)
-│   └── service         # Business Logic (Bidding, locking)
-├── user                # User Module
-│   ├── controller      # User Management API
-│   ├── model           # Entities (User)
-│   └── service         # Balance & Auth Logic
-├── infrastructure      # Cross-cutting concerns (Redis config, WebSocket config)
-└── LiveBidApplication.java
-```
-
-## Project Status
-**Current Phase**: Phase 3 Complete (Real-Time WebSockets)
-
-### Implemented Features
-*   **User Management**: create users, balance tracking (funds reservation).
-*   **Auction Management**: create auctions, schedule times.
-*   **Bidding Engine**:
-    *   Transactional bidding with pessimistic locking.
-    *   Escrow system (reserve funds, refund outbid users).
-*   **Real-Time Updates**:
-    *   WebSocket integration (STOMP) for instant bid notifications.
-    *   Redis caching for high-performance price lookups.
-*   **Verification**: 
-    *   Python CLI for simulating bidding wars.
-    *   HTML Client (`test-client.html`) for visual monitoring.
-
-## Getting Started
-
-### 1. Infrastructure
-Start the required services (Postgres, Redis, MinIO):
+### 3. Run the Application
+You can run the application directly using Maven:
 ```bash
-docker-compose up -d
-```
-
-### 2. Run the Application
-You can run via Maven or Docker.
-```bash
+# MacOS/Linux
 ./mvnw spring-boot:run
 ```
 
-## Verification Tools
-### 1. CLI (Bidding War Sim)
+The server will start on `http://localhost:8080`.
+
+## Usage & Tools
+
+### Interactive CLI
+We provide a powerful CLI tool to simulate users and auctions.
 ```bash
+# Navigate to project root
 pip install -r requirements.txt
 python cli.py
 ```
+**Features**:
+- Create Users with toy balances.
+- Start/View Auctions.
+- **Simulate Bid War**: Spawns multiple bot bidders to stress test the system.
 
-### 2. Real-Time Monitor
-Open `test-client.html` in your browser to see live bid updates.
+### Real-Time Client
+Open `test-client.html` in your web browser to connect to the WebSocket stream and view live updates as they happen.
 
-## Development Rules
-*   **Correctness First**: Ensure DB transactions are respected.
-*   **No Placeholders**: Use `long` for money (cents), not `double`.
-*   **Layer Separation**: Controllers -> Services -> Repositories.
+## API Documentation
+The API is designed around RESTful principles.
+
+| Method | Endpoint | Description |
+|--------|----------|-------------|
+| POST | `/users` | Create a new user |
+| POST | `/auctions` | Create a new auction |
+| POST | `/auctions/{id}/start` | Open an auction for bidding |
+| POST | `/auctions/{id}/bids` | Place a bid (requires valid user) |
+| GET | `/auctions/{id}` | Get real-time auction status |
+
+---

@@ -40,25 +40,25 @@ public class AuctionService {
 
     @Transactional
     public AuctionResponse createAuction(CreateAuctionRequest request) {
-        if (request.getStartPrice() <= 0) {
+        if (request.startPrice() <= 0) {
             throw new IllegalArgumentException("Start price must be greater than 0");
         }
-        if (!userRepository.existsById(request.getSellerId())) {
+        if (!userRepository.existsById(request.sellerId())) {
             throw new IllegalArgumentException("Seller not found");
         }
-        if (request.getStartTime().isAfter(request.getEndTime())) {
+        if (request.startTime().isAfter(request.endTime())) {
             throw new IllegalArgumentException("Start time must be before end time");
         }
 
         Auction auction = new Auction();
-        auction.setSellerId(request.getSellerId());
-        auction.setTitle(request.getTitle());
-        auction.setDescription(request.getDescription());
-        auction.setStartPrice(request.getStartPrice());
-        auction.setStartTime(request.getStartTime());
-        auction.setEndTime(request.getEndTime());
+        auction.setSellerId(request.sellerId());
+        auction.setTitle(request.title());
+        auction.setDescription(request.description());
+        auction.setStartPrice(request.startPrice());
+        auction.setStartTime(request.startTime());
+        auction.setEndTime(request.endTime());
         auction.setStatus(AuctionStatus.SCHEDULED);
-        auction.setCurrentPrice(request.getStartPrice());
+        auction.setCurrentPrice(request.startPrice());
         auction.setCurrentLeaderId(null);
         auction.setCurrentLeaderBidId(null);
 
@@ -75,17 +75,17 @@ public class AuctionService {
 
     // Helper to map Auction to AuctionResponse
     private AuctionResponse mapToResponse(Auction auction) {
-        AuctionResponse auctionResponse = new AuctionResponse();
-        auctionResponse.setId(auction.getId());
-        auctionResponse.setSellerId(auction.getSellerId());
-        auctionResponse.setTitle(auction.getTitle());
-        auctionResponse.setDescription(auction.getDescription());
-        auctionResponse.setCurrentPrice(auction.getCurrentPrice());
-        auctionResponse.setCurrentLeaderId(auction.getCurrentLeaderId());
-        auctionResponse.setStartTime(auction.getStartTime());
-        auctionResponse.setEndTime(auction.getEndTime());
-        auctionResponse.setStatus(auction.getStatus());
-        return auctionResponse;
+        return new AuctionResponse(
+                auction.getId(),
+                auction.getSellerId(),
+                auction.getTitle(),
+                auction.getDescription(),
+                auction.getStartPrice(),
+                auction.getCurrentPrice(),
+                auction.getCurrentLeaderId(),
+                auction.getStartTime(),
+                auction.getEndTime(),
+                auction.getStatus());
     }
 
     @Transactional

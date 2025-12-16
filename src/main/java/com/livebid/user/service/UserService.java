@@ -20,18 +20,17 @@ public class UserService {
 
     @Transactional
     public UserResponse createUser(CreateUserRequest request) {
-        if (userRepository.findByEmail(request.getEmail()).isPresent()) {
+        if (userRepository.findByEmail(request.email()).isPresent()) {
             throw new IllegalArgumentException("Email already exists");
         }
 
         User user = new User();
-        user.setEmail(request.getEmail());
+        user.setEmail(request.email());
         user.setAvailableBalance(100000);
         user.setReservedBalance(0);
 
         User savedUser = userRepository.save(user);
-        UserResponse userResponse = mapToResponse(savedUser);
-        return userResponse;
+        return mapToResponse(savedUser);
     }
 
     @Transactional(readOnly = true)
@@ -43,11 +42,10 @@ public class UserService {
 
     // Helper to map User to UserResponse
     private UserResponse mapToResponse(User user) {
-        UserResponse userResponse = new UserResponse();
-        userResponse.setId(user.getId());
-        userResponse.setEmail(user.getEmail());
-        userResponse.setAvailableBalance(user.getAvailableBalance());
-        userResponse.setReservedBalance(user.getReservedBalance());
-        return userResponse;
+        return new UserResponse(
+                user.getId(),
+                user.getEmail(),
+                user.getAvailableBalance(),
+                user.getReservedBalance());
     }
 }

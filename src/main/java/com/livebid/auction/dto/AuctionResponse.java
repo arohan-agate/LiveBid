@@ -1,21 +1,18 @@
 package com.livebid.auction.dto;
 
 import com.livebid.auction.model.AuctionStatus;
-import lombok.Getter;
-import lombok.Setter;
 import java.time.LocalDateTime;
 import java.util.UUID;
 
-@Getter
-@Setter
-public class AuctionResponse {
-    private UUID id;
-    private UUID sellerId;
-    private String title;
-    private String description;
-    private long currentPrice;
-    private UUID currentLeaderId;
-    private AuctionStatus status;
-    private LocalDateTime startTime;
-    private LocalDateTime endTime;
+public record AuctionResponse(
+        UUID id,
+        UUID sellerId,
+        String title,
+        String description,
+        long startPrice,
+        long currentPrice,
+        UUID currentLeaderId,
+        LocalDateTime startTime,
+        LocalDateTime endTime,
+        AuctionStatus status) {
 }

@@ -23,7 +23,7 @@ public class BidController {
             @PathVariable UUID auctionId,
             @RequestBody @Valid PlaceBidRequest request) {
 
-        auctionService.placeBid(auctionId, request.getBidderId(), request.getAmount());
+        auctionService.placeBid(auctionId, request.bidderId(), request.amount());
         return ResponseEntity.accepted().build();
     }
 }

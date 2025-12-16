@@ -1,6 +1,7 @@
 /app/src/main/java/com/livebid/auction/event/BidPlacedEvent.java
 /app/src/main/java/com/livebid/user/controller/UserController.java
 /app/src/main/java/com/livebid/api/ErrorResponse.java
+/app/src/main/java/com/livebid/infrastructure/exception/GlobalExceptionHandler.java
 /app/src/main/java/com/livebid/auction/repository/AuctionSettlementRepository.java
 /app/src/main/java/com/livebid/LiveBidApplication.java
 /app/src/main/java/com/livebid/user/service/UserService.java
