@@ -26,6 +26,11 @@ public class AuctionController {
         return auctionService.createAuction(request);
     }
 
+    @GetMapping
+    public java.util.List<AuctionResponse> getAllAuctions() {
+        return auctionService.getAllAuctions();
+    }
+
     @PostMapping("/{id}/start")
     public ResponseEntity<Void> startAuction(@PathVariable UUID id) {
         auctionService.convertToLive(id);

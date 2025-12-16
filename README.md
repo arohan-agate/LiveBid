@@ -39,6 +39,15 @@ You can run the application directly using Maven:
 
 The server will start on `http://localhost:8080`.
 
+### 4. Run the Frontend
+Navigate to `livebid-ui` and start the dev server:
+```bash
+cd livebid-ui
+npm install
+npm run dev
+```
+Open [http://localhost:3000](http://localhost:3000) to view the app.
+
 ## Usage & Tools
 
 ### Interactive CLI

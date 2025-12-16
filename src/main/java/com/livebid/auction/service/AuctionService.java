@@ -67,6 +67,13 @@ public class AuctionService {
     }
 
     @Transactional(readOnly = true)
+    public java.util.List<AuctionResponse> getAllAuctions() {
+        return auctionRepository.findAll().stream()
+                .map(this::mapToResponse)
+                .collect(java.util.stream.Collectors.toList());
+    }
+
+    @Transactional(readOnly = true)
     public AuctionResponse getAuction(UUID id) {
         Auction auction = auctionRepository.findById(id)
                 .orElseThrow(() -> new RuntimeException("Auction not found"));
