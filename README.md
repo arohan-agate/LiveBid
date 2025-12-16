@@ -31,7 +31,7 @@ src/main/java/com/livebid
 ```
 
 ## Project Status
-**Current Phase**: Phase 2 Complete (Bidding Engine)
+**Current Phase**: Phase 3 Complete (Real-Time WebSockets)
 
 ### Implemented Features
 *   **User Management**: create users, balance tracking (funds reservation).
@@ -39,8 +39,12 @@ src/main/java/com/livebid
 *   **Bidding Engine**:
     *   Transactional bidding with pessimistic locking.
     *   Escrow system (reserve funds, refund outbid users).
-    *   Automatic state updates.
-*   **Verification**: Python CLI for simulating bidding wars.
+*   **Real-Time Updates**:
+    *   WebSocket integration (STOMP) for instant bid notifications.
+    *   Redis caching for high-performance price lookups.
+*   **Verification**: 
+    *   Python CLI for simulating bidding wars.
+    *   HTML Client (`test-client.html`) for visual monitoring.
 
 ## Getting Started
 
@@ -56,17 +60,15 @@ You can run via Maven or Docker.
 ./mvnw spring-boot:run
 ```
 
-## Verification Tools (CLI)
-We include a Python CLI for testing complex flows like "Bidding Wars".
+## Verification Tools
+### 1. CLI (Bidding War Sim)
+```bash
+pip install -r requirements.txt
+python cli.py
+```
 
-1. Install dependencies:
-   ```bash
-   pip install -r requirements.txt
-   ```
-2. Run the interactive tool:
-   ```bash
-   python cli.py
-   ```
+### 2. Real-Time Monitor
+Open `test-client.html` in your browser to see live bid updates.
 
 ## Development Rules
 *   **Correctness First**: Ensure DB transactions are respected.

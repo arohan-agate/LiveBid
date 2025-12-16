@@ -9,6 +9,8 @@ import com.livebid.auction.repository.AuctionRepository;
 import com.livebid.auction.repository.BidRepository;
 import com.livebid.user.model.User;
 import com.livebid.user.repository.UserRepository;
+import com.livebid.auction.event.BidPlacedEvent;
+import org.springframework.context.ApplicationEventPublisher;
 import org.springframework.stereotype.Service;
 import org.springframework.transaction.annotation.Transactional;
 
@@ -20,12 +22,14 @@ public class AuctionService {
     private final AuctionRepository auctionRepository;
     private final UserRepository userRepository;
     private final BidRepository bidRepository;
+    private final ApplicationEventPublisher eventPublisher;
 
     public AuctionService(AuctionRepository auctionRepository, UserRepository userRepository,
-            BidRepository bidRepository) {
+            BidRepository bidRepository, ApplicationEventPublisher eventPublisher) {
         this.auctionRepository = auctionRepository;
         this.userRepository = userRepository;
         this.bidRepository = bidRepository;
+        this.eventPublisher = eventPublisher;
     }
 
     @Transactional
@@ -132,5 +136,6 @@ public class AuctionService {
         auction.setCurrentLeaderBidId(bid.getId());
         auctionRepository.save(auction);
 
+        eventPublisher.publishEvent(new BidPlacedEvent(auctionId, amount, bidderId));
     }
 }
