@@ -153,6 +153,15 @@ public class AuctionService {
             throw new IllegalArgumentException("Bid must be higher than current price: " + auction.getCurrentPrice());
         }
 
+        // Minimum increment: 5% of current price OR $1 (100 cents), whichever is
+        // greater
+        long minIncrement = Math.max((long) (auction.getCurrentPrice() * 0.05), 100);
+        long minBid = auction.getCurrentPrice() + minIncrement;
+        if (amount < minBid) {
+            throw new IllegalArgumentException("Minimum bid is " + minBid + " (current: " + auction.getCurrentPrice()
+                    + " + increment: " + minIncrement + ")");
+        }
+
         if (bidder.getAvailableBalance() < amount) {
             throw new IllegalArgumentException("Insufficient funds");
         }

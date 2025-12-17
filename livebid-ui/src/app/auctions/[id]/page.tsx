@@ -16,6 +16,11 @@ interface BidHistoryItem {
     timestamp: Date;
 }
 
+function getMinBid(currentPrice: number): number {
+    const minIncrement = Math.max(Math.floor(currentPrice * 0.05), 100);
+    return currentPrice + minIncrement;
+}
+
 function CountdownTimer({ endTime, onExpire }: { endTime: string; onExpire?: () => void }) {
     const [display, setDisplay] = useState('');
     const [isUrgent, setIsUrgent] = useState(false);
@@ -83,7 +88,7 @@ export default function AuctionDetailPage() {
         try {
             const res = await api.get<Auction>(`/auctions/${id}`);
             setAuction(res.data);
-            setBidAmount(String(res.data.currentPrice + 100));
+            setBidAmount(String(getMinBid(res.data.currentPrice)));
         } catch {
             setError('Auction not found');
         } finally {
@@ -94,7 +99,7 @@ export default function AuctionDetailPage() {
     const handleBidUpdate = useCallback((event: BidPlacedEvent) => {
         setAuction((prev) => prev ? { ...prev, currentPrice: event.newPrice, currentLeaderId: event.newLeaderId } : null);
         setBidHistory((prev) => [{ amount: event.newPrice, bidderId: event.newLeaderId, timestamp: new Date() }, ...prev.slice(0, 19)]);
-        setBidAmount(String(event.newPrice + 100));
+        setBidAmount(String(getMinBid(event.newPrice)));
     }, []);
 
     const handleAuctionClosed = useCallback((event: AuctionClosedEvent) => {
