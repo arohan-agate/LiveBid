@@ -14,9 +14,8 @@ interface BalanceChangedEvent {
 
 interface UserContextType {
     user: User | null;
-    token: string | null;
     isLoading: boolean;
-    loginWithGoogle: (idToken: string) => Promise<void>;
+    login: (userId: string) => Promise<void>;
     logout: () => void;
     refreshUser: () => Promise<void>;
 }
@@ -27,27 +26,22 @@ const WS_URL = 'http://localhost:8080/ws';
 
 export function UserProvider({ children }: { children: ReactNode }) {
     const [user, setUser] = useState<User | null>(null);
-    const [token, setToken] = useState<string | null>(null);
     const [isLoading, setIsLoading] = useState(true);
     const stompClient = useRef<Client | null>(null);
-
-    // Set auth header when token changes
-    useEffect(() => {
-        if (token) {
-            api.defaults.headers.common['Authorization'] = `Bearer ${token}`;
-        } else {
-            delete api.defaults.headers.common['Authorization'];
-        }
-    }, [token]);
 
     const fetchUser = useCallback(async (userId: string) => {
         try {
             const res = await api.get<User>(`/users/${userId}`);
             setUser(res.data);
+            localStorage.setItem('livebid_user_id', userId);
             return res.data;
         } catch (error) {
             console.error('Failed to fetch user:', error);
+            localStorage.removeItem('livebid_user_id');
+            setUser(null);
             return null;
+        } finally {
+            setIsLoading(false);
         }
     }, []);
 
@@ -64,9 +58,12 @@ export function UserProvider({ children }: { children: ReactNode }) {
             onConnect: () => {
                 console.log('[UserContext] WebSocket connected');
 
+                // Subscribe to user-specific balance updates
                 client.subscribe(`/topic/users/${userId}`, (message: IMessage) => {
                     try {
                         const event: BalanceChangedEvent = JSON.parse(message.body);
+                        console.log('[UserContext] Balance update received:', event);
+
                         setUser((prev) => {
                             if (!prev) return null;
                             return {
@@ -80,78 +77,67 @@ export function UserProvider({ children }: { children: ReactNode }) {
                     }
                 });
             },
+
+            onStompError: (frame) => {
+                console.error('[UserContext] STOMP error:', frame.headers['message']);
+            },
         });
 
         client.activate();
         stompClient.current = client;
     }, []);
 
+    // Disconnect WebSocket
     const disconnectWebSocket = useCallback(() => {
         if (stompClient.current?.active) {
             stompClient.current.deactivate();
             stompClient.current = null;
+            console.log('[UserContext] WebSocket disconnected');
         }
     }, []);
 
-    // Check for existing session on mount
     useEffect(() => {
-        const storedToken = localStorage.getItem('livebid_token');
-        const storedUser = localStorage.getItem('livebid_user');
-
-        if (storedToken && storedUser) {
-            try {
-                const parsedUser = JSON.parse(storedUser) as User;
-                setToken(storedToken);
-                setUser(parsedUser);
-                connectWebSocket(parsedUser.id);
-            } catch {
-                localStorage.removeItem('livebid_token');
-                localStorage.removeItem('livebid_user');
-            }
+        // Check localStorage on mount
+        const storedId = localStorage.getItem('livebid_user_id');
+        if (storedId) {
+            fetchUser(storedId).then((userData) => {
+                if (userData) {
+                    connectWebSocket(storedId);
+                }
+            });
+        } else {
+            setIsLoading(false);
         }
-        setIsLoading(false);
 
+        // Cleanup on unmount
         return () => {
             disconnectWebSocket();
         };
-    }, [connectWebSocket, disconnectWebSocket]);
+    }, [fetchUser, connectWebSocket, disconnectWebSocket]);
 
-    const loginWithGoogle = async (idToken: string) => {
+    const login = async (userId: string) => {
         setIsLoading(true);
-        try {
-            const res = await api.post<{ token: string; user: User }>('/auth/google', { idToken });
-            const { token: jwt, user: userData } = res.data;
-
-            localStorage.setItem('livebid_token', jwt);
-            localStorage.setItem('livebid_user', JSON.stringify(userData));
-
-            setToken(jwt);
-            setUser(userData);
-            connectWebSocket(userData.id);
-        } catch (error) {
-            console.error('Google login failed:', error);
-            throw error;
-        } finally {
-            setIsLoading(false);
+        const userData = await fetchUser(userId);
+        if (userData) {
+            connectWebSocket(userId);
         }
     };
 
     const logout = () => {
-        localStorage.removeItem('livebid_token');
-        localStorage.removeItem('livebid_user');
-        setToken(null);
+        localStorage.removeItem('livebid_user_id');
         setUser(null);
         disconnectWebSocket();
     };
 
     const refreshUser = async () => {
-        if (user) {
-            await fetchUser(user.id);
+        const storedId = localStorage.getItem('livebid_user_id');
+        if (storedId) {
+            await fetchUser(storedId);
         }
     };
 
     return (
-        <UserContext.Provider value={{ user, token, isLoading, loginWithGoogle, logout, refreshUser }}>
+        <UserContext.Provider value={{ user, isLoading, login, logout, refreshUser }}>
             {children}
         </UserContext.Provider>
     );

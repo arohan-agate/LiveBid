@@ -21,14 +21,11 @@ public class User {
     @Column(nullable = false, unique = true)
     private String email;
 
-    @Column(unique = true)
-    private String googleId;
-
-    private String name;
-
     @Column(nullable = false)
     private long availableBalance; // In cents
 
     @Column(nullable = false)
     private long reservedBalance; // Locked funds
+
+    // TODO: Add audit fields (createdAt, updatedAt)
 }
