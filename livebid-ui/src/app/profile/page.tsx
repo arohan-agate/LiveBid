@@ -39,10 +39,12 @@ export default function ProfilePage() {
         if (user) fetchUserData();
     }, [user, fetchUserData]);
 
-    if (!userLoading && !user) {
-        router.push('/auth');
-        return null;
-    }
+    // Redirect if not logged in
+    useEffect(() => {
+        if (!userLoading && !user) {
+            router.push('/auth');
+        }
+    }, [userLoading, user, router]);
 
     if (userLoading || !user) {
         return (
@@ -138,8 +140,8 @@ export default function ProfilePage() {
                             key={tab.id}
                             onClick={() => setActiveTab(tab.id)}
                             className={`flex items-center gap-2 pb-3 text-sm font-medium border-b-2 transition-colors ${activeTab === tab.id
-                                    ? 'border-indigo-600 text-indigo-600'
-                                    : 'border-transparent text-gray-500 hover:text-gray-700'
+                                ? 'border-indigo-600 text-indigo-600'
+                                : 'border-transparent text-gray-500 hover:text-gray-700'
                                 }`}
                         >
                             {tab.icon}
