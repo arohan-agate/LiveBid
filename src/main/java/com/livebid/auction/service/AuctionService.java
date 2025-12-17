@@ -12,6 +12,7 @@ import com.livebid.auction.repository.BidRepository;
 import com.livebid.user.model.User;
 import com.livebid.user.repository.UserRepository;
 import com.livebid.auction.event.BidPlacedEvent;
+import com.livebid.user.event.UserBalanceChangedEvent;
 import org.springframework.context.ApplicationEventPublisher;
 import org.springframework.stereotype.Service;
 import org.springframework.transaction.annotation.Transactional;
@@ -80,6 +81,27 @@ public class AuctionService {
         return mapToResponse(auction);
     }
 
+    @Transactional(readOnly = true)
+    public java.util.List<AuctionResponse> getAuctionsBySeller(UUID sellerId) {
+        return auctionRepository.findBySellerId(sellerId).stream()
+                .map(this::mapToResponse)
+                .collect(java.util.stream.Collectors.toList());
+    }
+
+    @Transactional(readOnly = true)
+    public java.util.List<AuctionResponse> getAuctionsByBidder(UUID bidderId) {
+        // Get unique auction IDs from bids
+        java.util.Set<UUID> auctionIds = bidRepository.findByBidderId(bidderId).stream()
+                .map(bid -> bid.getAuctionId())
+                .collect(java.util.stream.Collectors.toSet());
+
+        return auctionIds.stream()
+                .map(auctionId -> auctionRepository.findById(auctionId).orElse(null))
+                .filter(auction -> auction != null)
+                .map(this::mapToResponse)
+                .collect(java.util.stream.Collectors.toList());
+    }
+
     // Helper to map Auction to AuctionResponse
     private AuctionResponse mapToResponse(Auction auction) {
         return new AuctionResponse(
@@ -99,6 +121,13 @@ public class AuctionService {
     public void convertToLive(UUID auctionId) {
         Auction auction = auctionRepository.findById(auctionId)
                 .orElseThrow(() -> new RuntimeException("Auction not found"));
+
+        // Recalculate endTime based on original duration (endTime - startTime)
+        java.time.Duration duration = java.time.Duration.between(auction.getStartTime(), auction.getEndTime());
+        java.time.LocalDateTime now = java.time.LocalDateTime.now();
+        auction.setStartTime(now);
+        auction.setEndTime(now.plus(duration));
+
         auction.setStatus(AuctionStatus.LIVE);
         auctionRepository.save(auction);
     }
@@ -131,6 +160,8 @@ public class AuctionService {
         bidder.setAvailableBalance(bidder.getAvailableBalance() - amount);
         bidder.setReservedBalance(bidder.getReservedBalance() + amount);
         userRepository.save(bidder);
+        eventPublisher.publishEvent(
+                new UserBalanceChangedEvent(bidderId, bidder.getAvailableBalance(), bidder.getReservedBalance()));
 
         if (auction.getCurrentLeaderId() != null) {
             User prevLeader = userRepository.findByIdWithLock(auction.getCurrentLeaderId())
@@ -140,6 +171,8 @@ public class AuctionService {
             prevLeader.setReservedBalance(prevLeader.getReservedBalance() - refundAmount);
             prevLeader.setAvailableBalance(prevLeader.getAvailableBalance() + refundAmount);
             userRepository.save(prevLeader);
+            eventPublisher.publishEvent(new UserBalanceChangedEvent(auction.getCurrentLeaderId(),
+                    prevLeader.getAvailableBalance(), prevLeader.getReservedBalance()));
         }
 
         Bid bid = new Bid();

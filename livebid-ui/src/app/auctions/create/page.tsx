@@ -110,8 +110,8 @@ export default function CreateAuctionPage() {
                             type="number"
                             required
                             min={100}
-                            value={formData.startPrice}
-                            onChange={(e) => setFormData({ ...formData, startPrice: parseInt(e.target.value) })}
+                            value={formData.startPrice || ''}
+                            onChange={(e) => setFormData({ ...formData, startPrice: parseInt(e.target.value) || 0 })}
                             className="block w-full rounded-lg border border-slate-300 px-3 py-2 shadow-sm focus:border-violet-500 focus:ring-violet-500"
                         />
                         <p className="mt-1 text-xs text-slate-500">1000 = $10.00</p>

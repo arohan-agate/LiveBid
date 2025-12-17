@@ -1,4 +1,4 @@
-// Shared TypeScript types for LiveBid
+// Update TypeScript types for extended events
 
 export interface Auction {
     id: string;
@@ -30,4 +30,10 @@ export interface AuctionClosedEvent {
     auctionId: string;
     winnerId: string;
     closingPrice: number;
+}
+
+export interface UserBalanceChangedEvent {
+    userId: string;
+    availableBalance: number;
+    reservedBalance: number;
 }

@@ -1,15 +1,45 @@
+'use client';
+
 import Link from 'next/link';
-import { formatCurrency } from '@/lib/api';
+import { formatCurrency, api } from '@/lib/api';
 import { Auction } from '@/lib/types';
-import { Clock, Zap } from 'lucide-react';
+import { Clock, Zap, Play, Loader2 } from 'lucide-react';
+import { useState } from 'react';
 
 interface AuctionCardProps {
     auction: Auction;
+    currentUserId?: string;
+    onActivate?: () => void;
 }
 
-export default function AuctionCard({ auction }: AuctionCardProps) {
+export default function AuctionCard({ auction, currentUserId, onActivate }: AuctionCardProps) {
+    const [isActivating, setIsActivating] = useState(false);
+    const [activateError, setActivateError] = useState('');
+
     const isLive = auction.status === 'LIVE';
     const isClosed = auction.status === 'CLOSED';
+    const isScheduled = auction.status === 'SCHEDULED';
+    const isOwner = currentUserId && auction.sellerId === currentUserId;
+
+    const handleActivate = async (e: React.MouseEvent) => {
+        e.preventDefault(); // Prevent navigation
+        e.stopPropagation();
+
+        setActivateError('');
+        setIsActivating(true);
+
+        try {
+            await api.post(`/auctions/${auction.id}/start`);
+            if (onActivate) {
+                onActivate();
+            }
+        } catch (err: unknown) {
+            const axiosError = err as { response?: { data?: { error?: string } } };
+            setActivateError(axiosError.response?.data?.error || 'Failed to activate');
+        } finally {
+            setIsActivating(false);
+        }
+    };
 
     return (
         <Link
@@ -35,6 +65,18 @@ export default function AuctionCard({ auction }: AuctionCardProps) {
                 {isClosed && (
                     <div className="absolute top-3 left-3 rounded-full bg-slate-500 px-2.5 py-1 text-xs font-bold text-white">
                         CLOSED
+                    </div>
+                )}
+                {isScheduled && (
+                    <div className="absolute top-3 left-3 rounded-full bg-amber-500 px-2.5 py-1 text-xs font-bold text-white">
+                        SCHEDULED
+                    </div>
+                )}
+
+                {/* Owner Badge */}
+                {isOwner && (
+                    <div className="absolute top-3 right-3 rounded-full bg-violet-600 px-2.5 py-1 text-xs font-bold text-white">
+                        YOUR AUCTION
                     </div>
                 )}
             </div>
@@ -67,6 +109,27 @@ export default function AuctionCard({ auction }: AuctionCardProps) {
                         </p>
                     </div>
                 </div>
+
+                {/* Activate Button for Owner of Scheduled Auction */}
+                {isOwner && isScheduled && (
+                    <div className="mt-4 pt-4 border-t border-slate-100">
+                        {activateError && (
+                            <p className="text-xs text-red-500 mb-2">{activateError}</p>
+                        )}
+                        <button
+                            onClick={handleActivate}
+                            disabled={isActivating}
+                            className="w-full flex items-center justify-center gap-2 rounded-lg bg-emerald-600 px-4 py-2 text-sm font-bold text-white hover:bg-emerald-700 disabled:opacity-50 disabled:cursor-not-allowed transition-colors"
+                        >
+                            {isActivating ? (
+                                <Loader2 className="h-4 w-4 animate-spin" />
+                            ) : (
+                                <Play className="h-4 w-4" />
+                            )}
+                            Activate Auction
+                        </button>
+                    </div>
+                )}
             </div>
         </Link>
     );

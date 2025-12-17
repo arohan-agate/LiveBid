@@ -1,21 +1,22 @@
 'use client';
 
-import { useEffect, useState } from 'react';
+import { useEffect, useState, useCallback } from 'react';
 import { api } from '@/lib/api';
 import { Auction } from '@/lib/types';
+import { useUser } from '@/context/UserContext';
 import AuctionCard from '@/components/AuctionCard';
-import { Loader2, Sparkles } from 'lucide-react';
+import { Loader2, Sparkles, Filter } from 'lucide-react';
+
+type StatusFilter = 'ALL' | 'LIVE' | 'SCHEDULED' | 'CLOSED';
 
 export default function HomePage() {
+  const { user } = useUser();
   const [auctions, setAuctions] = useState<Auction[]>([]);
   const [isLoading, setIsLoading] = useState(true);
   const [error, setError] = useState<string | null>(null);
+  const [filter, setFilter] = useState<StatusFilter>('LIVE');
 
-  useEffect(() => {
-    fetchAuctions();
-  }, []);
-
-  const fetchAuctions = async () => {
+  const fetchAuctions = useCallback(async () => {
     try {
       const res = await api.get<Auction[]>('/auctions');
       setAuctions(res.data);
@@ -25,7 +26,23 @@ export default function HomePage() {
     } finally {
       setIsLoading(false);
     }
-  };
+  }, []);
+
+  useEffect(() => {
+    fetchAuctions();
+  }, [fetchAuctions]);
+
+  const filteredAuctions = auctions.filter((auction) => {
+    if (filter === 'ALL') return true;
+    return auction.status === filter;
+  });
+
+  const filterTabs: { value: StatusFilter; label: string; count: number }[] = [
+    { value: 'LIVE', label: 'Live', count: auctions.filter(a => a.status === 'LIVE').length },
+    { value: 'SCHEDULED', label: 'Scheduled', count: auctions.filter(a => a.status === 'SCHEDULED').length },
+    { value: 'CLOSED', label: 'Closed', count: auctions.filter(a => a.status === 'CLOSED').length },
+    { value: 'ALL', label: 'All', count: auctions.length },
+  ];
 
   if (isLoading) {
     return (
@@ -66,24 +83,52 @@ export default function HomePage() {
 
       {/* Auction Grid */}
       <section>
-        <div className="flex items-center justify-between mb-6">
-          <h2 className="text-2xl font-bold text-slate-900">All Auctions</h2>
-          <button
-            onClick={() => { setIsLoading(true); fetchAuctions(); }}
-            className="text-sm text-violet-600 hover:text-violet-700 font-medium"
-          >
-            Refresh
-          </button>
+        <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-4 mb-6">
+          <h2 className="text-2xl font-bold text-slate-900 flex items-center gap-2">
+            <Filter className="h-5 w-5 text-slate-400" />
+            Auctions
+          </h2>
+
+          {/* Filter Tabs */}
+          <div className="flex gap-1 bg-slate-100 p-1 rounded-lg">
+            {filterTabs.map((tab) => (
+              <button
+                key={tab.value}
+                onClick={() => setFilter(tab.value)}
+                className={`px-4 py-2 text-sm font-medium rounded-md transition-colors ${filter === tab.value
+                    ? 'bg-white text-slate-900 shadow-sm'
+                    : 'text-slate-600 hover:text-slate-900'
+                  }`}
+              >
+                {tab.label}
+                <span className={`ml-1.5 px-1.5 py-0.5 text-xs rounded-full ${filter === tab.value
+                    ? 'bg-violet-100 text-violet-700'
+                    : 'bg-slate-200 text-slate-600'
+                  }`}>
+                  {tab.count}
+                </span>
+              </button>
+            ))}
+          </div>
         </div>
 
-        {auctions.length === 0 ? (
+        {filteredAuctions.length === 0 ? (
           <div className="rounded-xl border-2 border-dashed border-slate-300 bg-white py-16 text-center">
-            <p className="text-slate-500">No auctions found. Why not create one?</p>
+            <p className="text-slate-500">
+              {filter === 'LIVE'
+                ? 'No live auctions right now. Check scheduled auctions!'
+                : `No ${filter.toLowerCase()} auctions found.`}
+            </p>
           </div>
         ) : (
           <div className="grid gap-6 sm:grid-cols-2 lg:grid-cols-3 xl:grid-cols-4">
-            {auctions.map((auction) => (
-              <AuctionCard key={auction.id} auction={auction} />
+            {filteredAuctions.map((auction) => (
+              <AuctionCard
+                key={auction.id}
+                auction={auction}
+                currentUserId={user?.id}
+                onActivate={fetchAuctions}
+              />
             ))}
           </div>
         )}

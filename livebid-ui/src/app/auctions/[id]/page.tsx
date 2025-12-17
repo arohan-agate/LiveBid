@@ -7,12 +7,55 @@ import { connectToAuction, disconnectFromAuction } from '@/lib/socket';
 import { useUser } from '@/context/UserContext';
 import { Auction, BidPlacedEvent, AuctionClosedEvent } from '@/lib/types';
 import { Client } from '@stomp/stompjs';
-import { Loader2, Zap, Clock, Users, Send, Wifi, WifiOff } from 'lucide-react';
+import { Loader2, Zap, Clock, Users, Send, Wifi, WifiOff, Play, Timer } from 'lucide-react';
 
 interface BidHistoryItem {
     amount: number;
     bidderId: string;
     timestamp: Date;
+}
+
+function CountdownTimer({ endTime, onExpire }: { endTime: string; onExpire?: () => void }) {
+    const [timeLeft, setTimeLeft] = useState<string>('');
+    const [isExpired, setIsExpired] = useState(false);
+
+    useEffect(() => {
+        const calculateTimeLeft = () => {
+            const end = new Date(endTime).getTime();
+            const now = Date.now();
+            const diff = end - now;
+
+            if (diff <= 0) {
+                setIsExpired(true);
+                setTimeLeft('ENDED');
+                if (onExpire) onExpire();
+                return;
+            }
+
+            const hours = Math.floor(diff / (1000 * 60 * 60));
+            const minutes = Math.floor((diff % (1000 * 60 * 60)) / (1000 * 60));
+            const seconds = Math.floor((diff % (1000 * 60)) / 1000);
+
+            if (hours > 0) {
+                setTimeLeft(`${hours}h ${minutes}m ${seconds}s`);
+            } else if (minutes > 0) {
+                setTimeLeft(`${minutes}m ${seconds}s`);
+            } else {
+                setTimeLeft(`${seconds}s`);
+            }
+        };
+
+        calculateTimeLeft();
+        const interval = setInterval(calculateTimeLeft, 1000);
+        return () => clearInterval(interval);
+    }, [endTime, onExpire]);
+
+    return (
+        <div className={`flex items-center gap-2 font-mono text-lg font-bold ${isExpired ? 'text-red-600' : 'text-slate-900'}`}>
+            <Timer className={`h-5 w-5 ${!isExpired && 'animate-pulse'}`} />
+            {timeLeft}
+        </div>
+    );
 }
 
 export default function AuctionDetailPage() {
@@ -29,6 +72,9 @@ export default function AuctionDetailPage() {
     const [bidAmount, setBidAmount] = useState('');
     const [isPlacingBid, setIsPlacingBid] = useState(false);
     const [bidError, setBidError] = useState('');
+
+    const [isActivating, setIsActivating] = useState(false);
+    const [activateError, setActivateError] = useState('');
 
     const stompClient = useRef<Client | null>(null);
 
@@ -67,7 +113,7 @@ export default function AuctionDetailPage() {
             bidderId: event.newLeaderId,
             timestamp: new Date(),
         };
-        setBidHistory((prev) => [newBid, ...prev.slice(0, 49)]); // Keep last 50
+        setBidHistory((prev) => [newBid, ...prev.slice(0, 49)]);
 
         // Suggest next bid
         setBidAmount(String(event.newPrice + 100));
@@ -87,7 +133,6 @@ export default function AuctionDetailPage() {
             };
         });
 
-        // Refresh user balance (in case they won or got refunded)
         refreshUser();
     }, [refreshUser]);
 
@@ -95,7 +140,6 @@ export default function AuctionDetailPage() {
     useEffect(() => {
         fetchAuction();
 
-        // Connect to WebSocket
         stompClient.current = connectToAuction(
             id,
             handleBidUpdate,
@@ -104,11 +148,34 @@ export default function AuctionDetailPage() {
             (err) => console.error('WebSocket error:', err)
         );
 
-        // Cleanup on unmount
         return () => {
             disconnectFromAuction(stompClient.current);
         };
     }, [id, fetchAuction, handleBidUpdate, handleAuctionClosed]);
+
+    // Handle countdown expiry - refresh auction data
+    const handleCountdownExpire = useCallback(() => {
+        // Wait a moment for backend to process, then refresh
+        setTimeout(() => {
+            fetchAuction();
+        }, 2000);
+    }, [fetchAuction]);
+
+    // Activate auction
+    const handleActivate = async () => {
+        setActivateError('');
+        setIsActivating(true);
+
+        try {
+            await api.post(`/auctions/${id}/start`);
+            await fetchAuction(); // Refresh to get new endTime
+        } catch (err: unknown) {
+            const axiosError = err as { response?: { data?: { error?: string } } };
+            setActivateError(axiosError.response?.data?.error || 'Failed to activate');
+        } finally {
+            setIsActivating(false);
+        }
+    };
 
     // Place a bid
     const handlePlaceBid = async (e: React.FormEvent) => {
@@ -137,8 +204,7 @@ export default function AuctionDetailPage() {
                 bidderId: user.id,
                 amount: amount,
             });
-            // Success! The WebSocket will update the UI
-            await refreshUser(); // Refresh balance
+            await refreshUser();
         } catch (err: unknown) {
             const axiosError = err as { response?: { data?: { error?: string } } };
             const message = axiosError.response?.data?.error || 'Failed to place bid';
@@ -172,6 +238,8 @@ export default function AuctionDetailPage() {
 
     const isLive = auction.status === 'LIVE';
     const isClosed = auction.status === 'CLOSED';
+    const isScheduled = auction.status === 'SCHEDULED';
+    const isOwner = user && auction.sellerId === user.id;
 
     return (
         <div className="grid gap-8 lg:grid-cols-3">
@@ -184,9 +252,8 @@ export default function AuctionDetailPage() {
 
                 {/* Title & Description */}
                 <div>
-                    <div className="flex items-center gap-3 mb-2">
+                    <div className="flex items-center gap-3 mb-2 flex-wrap">
                         <h1 className="text-3xl font-extrabold text-slate-900">{auction.title}</h1>
-                        {/* Connection Status */}
                         {isConnected ? (
                             <span className="flex items-center gap-1 text-xs text-green-600" title="Live connection active">
                                 <Wifi className="h-4 w-4" />
@@ -194,6 +261,11 @@ export default function AuctionDetailPage() {
                         ) : (
                             <span className="flex items-center gap-1 text-xs text-red-500" title="Disconnected">
                                 <WifiOff className="h-4 w-4" />
+                            </span>
+                        )}
+                        {isOwner && (
+                            <span className="rounded-full bg-violet-100 px-2.5 py-0.5 text-xs font-medium text-violet-700">
+                                YOUR AUCTION
                             </span>
                         )}
                     </div>
@@ -210,13 +282,41 @@ export default function AuctionDetailPage() {
                     </div>
                     <div className="rounded-lg bg-slate-50 border border-slate-200 p-4">
                         <p className="text-xs text-slate-500 uppercase tracking-wider font-semibold mb-1 flex items-center gap-1">
-                            <Clock className="h-3 w-3" /> Ends At
+                            <Clock className="h-3 w-3" /> {isLive ? 'Time Remaining' : 'Ends At'}
                         </p>
-                        <p className="text-lg font-medium text-slate-900">
-                            {new Date(auction.endTime).toLocaleString()}
-                        </p>
+                        {isLive ? (
+                            <CountdownTimer endTime={auction.endTime} onExpire={handleCountdownExpire} />
+                        ) : (
+                            <p className="text-lg font-medium text-slate-900">
+                                {new Date(auction.endTime).toLocaleString()}
+                            </p>
+                        )}
                     </div>
                 </div>
+
+                {/* Activate Button for Owner */}
+                {isOwner && isScheduled && (
+                    <div className="rounded-lg border-2 border-dashed border-emerald-300 bg-emerald-50 p-6 text-center">
+                        <p className="text-sm text-emerald-700 mb-3">
+                            This auction is scheduled. Activate it to start accepting bids.
+                        </p>
+                        {activateError && (
+                            <p className="text-sm text-red-500 mb-3">{activateError}</p>
+                        )}
+                        <button
+                            onClick={handleActivate}
+                            disabled={isActivating}
+                            className="inline-flex items-center gap-2 rounded-lg bg-emerald-600 px-6 py-3 text-lg font-bold text-white hover:bg-emerald-700 disabled:opacity-50 disabled:cursor-not-allowed transition-colors shadow-lg"
+                        >
+                            {isActivating ? (
+                                <Loader2 className="h-5 w-5 animate-spin" />
+                            ) : (
+                                <Play className="h-5 w-5" />
+                            )}
+                            Activate Auction Now
+                        </button>
+                    </div>
+                )}
             </div>
 
             {/* RIGHT: Bidding Panel */}

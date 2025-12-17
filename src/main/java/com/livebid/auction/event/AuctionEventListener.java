@@ -1,5 +1,6 @@
 package com.livebid.auction.event;
 
+import com.livebid.user.event.UserBalanceChangedEvent;
 import org.springframework.context.event.EventListener;
 import org.springframework.data.redis.core.RedisTemplate;
 import org.springframework.messaging.simp.SimpMessagingTemplate;
@@ -33,5 +34,11 @@ public class AuctionEventListener {
     public void handleAuctionClosed(AuctionClosedEvent event) {
         // Broadcast to WebSocket only after DB commit is successful
         messagingTemplate.convertAndSend("/topic/auctions/" + event.getAuctionId(), event);
+    }
+
+    @EventListener
+    public void handleUserBalanceChanged(UserBalanceChangedEvent event) {
+        // Push balance update to user-specific topic
+        messagingTemplate.convertAndSend("/topic/users/" + event.getUserId(), event);
     }
 }
