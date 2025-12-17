@@ -5,8 +5,9 @@ import { useUser } from '@/context/UserContext';
 import { formatCurrency, api } from '@/lib/api';
 import { Auction } from '@/lib/types';
 import AuctionCard from '@/components/AuctionCard';
-import { User, Wallet, Copy, Check, Gavel, History, Loader2 } from 'lucide-react';
+import { Copy, Check, Gavel, History, Loader2, Wallet, ArrowLeft } from 'lucide-react';
 import { useState, useEffect, useCallback } from 'react';
+import Link from 'next/link';
 
 export default function ProfilePage() {
     const router = useRouter();
@@ -14,12 +15,12 @@ export default function ProfilePage() {
     const [copied, setCopied] = useState(false);
     const [myAuctions, setMyAuctions] = useState<Auction[]>([]);
     const [myBids, setMyBids] = useState<Auction[]>([]);
-    const [loadingAuctions, setLoadingAuctions] = useState(true);
-    const [activeTab, setActiveTab] = useState<'created' | 'bids'>('created');
+    const [loadingData, setLoadingData] = useState(true);
+    const [activeTab, setActiveTab] = useState<'auctions' | 'bids'>('auctions');
 
     const fetchUserData = useCallback(async () => {
         if (!user) return;
-        setLoadingAuctions(true);
+        setLoadingData(true);
         try {
             const [auctionsRes, bidsRes] = await Promise.all([
                 api.get<Auction[]>(`/users/${user.id}/auctions`),
@@ -30,17 +31,14 @@ export default function ProfilePage() {
         } catch (err) {
             console.error('Failed to fetch user data:', err);
         } finally {
-            setLoadingAuctions(false);
+            setLoadingData(false);
         }
     }, [user]);
 
     useEffect(() => {
-        if (user) {
-            fetchUserData();
-        }
+        if (user) fetchUserData();
     }, [user, fetchUserData]);
 
-    // Redirect if not logged in
     if (!userLoading && !user) {
         router.push('/auth');
         return null;
@@ -48,8 +46,8 @@ export default function ProfilePage() {
 
     if (userLoading || !user) {
         return (
-            <div className="flex h-[50vh] items-center justify-center">
-                <div className="h-8 w-8 animate-spin rounded-full border-4 border-violet-600 border-t-transparent" />
+            <div className="flex h-[60vh] items-center justify-center">
+                <Loader2 className="h-8 w-8 animate-spin text-indigo-600" />
             </div>
         );
     }
@@ -60,73 +58,71 @@ export default function ProfilePage() {
         setTimeout(() => setCopied(false), 2000);
     };
 
-    return (
-        <div className="mx-auto max-w-4xl py-8 space-y-8">
-            <div className="flex items-center justify-between">
-                <h1 className="text-3xl font-bold text-slate-900">My Profile</h1>
-                <button
-                    onClick={() => { logout(); router.push('/'); }}
-                    className="text-sm text-red-600 hover:text-red-700 font-medium"
-                >
-                    Sign Out
-                </button>
-            </div>
+    const tabs = [
+        { id: 'auctions' as const, label: 'My Auctions', count: myAuctions.length, icon: <Gavel className="h-4 w-4" /> },
+        { id: 'bids' as const, label: 'My Bids', count: myBids.length, icon: <History className="h-4 w-4" /> },
+    ];
 
-            <div className="rounded-xl border border-slate-200 bg-white p-6 shadow-sm space-y-6">
-                {/* User Info */}
-                <div className="grid grid-cols-1 md:grid-cols-2 gap-6">
-                    <div>
-                        <p className="text-xs text-slate-500 uppercase tracking-wider font-semibold mb-1">
-                            User ID
-                        </p>
-                        <div className="flex items-center gap-2">
-                            <code className="flex-1 font-mono text-sm bg-slate-50 p-2 rounded border border-slate-100 truncate">
-                                {user.id}
-                            </code>
-                            <button
-                                onClick={copyUserId}
-                                className="flex h-8 w-8 items-center justify-center rounded bg-slate-100 hover:bg-slate-200 transition-colors"
-                                title="Copy ID"
-                            >
-                                {copied ? <Check className="h-4 w-4 text-green-600" /> : <Copy className="h-4 w-4 text-slate-600" />}
-                            </button>
+    return (
+        <div className="max-w-4xl mx-auto space-y-8">
+            {/* Back Link */}
+            <Link href="/" className="inline-flex items-center gap-1 text-sm text-gray-500 hover:text-gray-700">
+                <ArrowLeft className="h-4 w-4" />
+                Back to auctions
+            </Link>
+
+            {/* Profile Card */}
+            <div className="rounded-xl bg-white border border-gray-200 overflow-hidden">
+                <div className="p-6 border-b border-gray-100">
+                    <div className="flex items-start justify-between">
+                        <div className="flex items-center gap-4">
+                            <div className="h-14 w-14 rounded-full bg-indigo-100 flex items-center justify-center text-indigo-600 text-xl font-bold">
+                                {user.email.charAt(0).toUpperCase()}
+                            </div>
+                            <div>
+                                <h1 className="text-xl font-bold text-gray-900">{user.email}</h1>
+                                <div className="flex items-center gap-2 mt-1">
+                                    <code className="text-xs text-gray-400 font-mono">
+                                        {user.id.substring(0, 8)}...
+                                    </code>
+                                    <button
+                                        onClick={copyUserId}
+                                        className="text-gray-400 hover:text-gray-600"
+                                        title="Copy full ID"
+                                    >
+                                        {copied ? <Check className="h-3.5 w-3.5 text-green-500" /> : <Copy className="h-3.5 w-3.5" />}
+                                    </button>
+                                </div>
+                            </div>
                         </div>
-                    </div>
-                    <div>
-                        <p className="text-xs text-slate-500 uppercase tracking-wider font-semibold mb-1">
-                            Email
-                        </p>
-                        <p className="font-medium text-slate-900 flex items-center gap-2">
-                            <User className="h-4 w-4 text-slate-400" />
-                            {user.email}
-                        </p>
+                        <button
+                            onClick={() => { logout(); router.push('/'); }}
+                            className="text-sm text-gray-500 hover:text-red-600"
+                        >
+                            Sign out
+                        </button>
                     </div>
                 </div>
 
-                <div className="border-t border-slate-100 pt-6">
-                    <div className="flex items-center justify-between mb-4">
-                        <h2 className="text-lg font-semibold text-slate-900 flex items-center gap-2">
-                            <Wallet className="h-5 w-5 text-slate-600" />
-                            Financials
-                        </h2>
-                        <button
-                            onClick={refreshUser}
-                            className="text-sm text-violet-600 hover:text-violet-700 font-medium"
-                        >
+                {/* Balance Section */}
+                <div className="p-6 bg-gray-50">
+                    <div className="flex items-center gap-2 text-sm text-gray-500 mb-3">
+                        <Wallet className="h-4 w-4" />
+                        Account Balance
+                        <button onClick={refreshUser} className="ml-auto text-indigo-600 hover:text-indigo-700 text-xs font-medium">
                             Refresh
                         </button>
                     </div>
-
                     <div className="grid grid-cols-2 gap-4">
-                        <div className="rounded-lg bg-emerald-50 border border-emerald-100 p-4">
-                            <p className="text-sm text-emerald-600 font-medium">Available Balance</p>
-                            <p className="text-2xl font-bold text-emerald-700 font-mono">
+                        <div className="rounded-lg bg-white border border-gray-200 p-4">
+                            <p className="text-sm text-gray-500">Available</p>
+                            <p className="text-2xl font-bold text-green-600 font-mono">
                                 {formatCurrency(user.availableBalance)}
                             </p>
                         </div>
-                        <div className="rounded-lg bg-amber-50 border border-amber-100 p-4">
-                            <p className="text-sm text-amber-600 font-medium">Reserved (In Escrow)</p>
-                            <p className="text-2xl font-bold text-amber-700 font-mono">
+                        <div className="rounded-lg bg-white border border-gray-200 p-4">
+                            <p className="text-sm text-gray-500">In Escrow</p>
+                            <p className="text-2xl font-bold text-amber-600 font-mono">
                                 {formatCurrency(user.reservedBalance)}
                             </p>
                         </div>
@@ -134,92 +130,76 @@ export default function ProfilePage() {
                 </div>
             </div>
 
-            {/* Tabs for My Auctions / My Bids */}
-            <div className="space-y-4">
-                <div className="flex gap-1 bg-slate-100 p-1 rounded-lg w-fit">
-                    <button
-                        onClick={() => setActiveTab('created')}
-                        className={`flex items-center gap-2 px-4 py-2 text-sm font-medium rounded-md transition-colors ${activeTab === 'created'
-                                ? 'bg-white text-slate-900 shadow-sm'
-                                : 'text-slate-600 hover:text-slate-900'
-                            }`}
-                    >
-                        <Gavel className="h-4 w-4" />
-                        My Auctions
-                        <span className="px-1.5 py-0.5 text-xs rounded-full bg-violet-100 text-violet-700">
-                            {myAuctions.length}
-                        </span>
-                    </button>
-                    <button
-                        onClick={() => setActiveTab('bids')}
-                        className={`flex items-center gap-2 px-4 py-2 text-sm font-medium rounded-md transition-colors ${activeTab === 'bids'
-                                ? 'bg-white text-slate-900 shadow-sm'
-                                : 'text-slate-600 hover:text-slate-900'
-                            }`}
-                    >
-                        <History className="h-4 w-4" />
-                        My Bids
-                        <span className="px-1.5 py-0.5 text-xs rounded-full bg-violet-100 text-violet-700">
-                            {myBids.length}
-                        </span>
-                    </button>
-                </div>
-
-                {loadingAuctions ? (
-                    <div className="flex justify-center py-12">
-                        <Loader2 className="h-8 w-8 animate-spin text-violet-600" />
-                    </div>
-                ) : activeTab === 'created' ? (
-                    myAuctions.length === 0 ? (
-                        <div className="rounded-xl border-2 border-dashed border-slate-300 bg-white py-12 text-center">
-                            <Gavel className="h-10 w-10 text-slate-300 mx-auto mb-2" />
-                            <p className="text-slate-500">You haven&apos;t created any auctions yet.</p>
-                            <button
-                                onClick={() => router.push('/auctions/create')}
-                                className="mt-4 rounded-lg bg-violet-600 px-4 py-2 text-white font-medium hover:bg-violet-700"
-                            >
-                                Create Your First Auction
-                            </button>
-                        </div>
-                    ) : (
-                        <div className="grid gap-4 sm:grid-cols-2 lg:grid-cols-3">
-                            {myAuctions.map((auction) => (
-                                <AuctionCard
-                                    key={auction.id}
-                                    auction={auction}
-                                    currentUserId={user.id}
-                                    onActivate={fetchUserData}
-                                />
-                            ))}
-                        </div>
-                    )
-                ) : myBids.length === 0 ? (
-                    <div className="rounded-xl border-2 border-dashed border-slate-300 bg-white py-12 text-center">
-                        <History className="h-10 w-10 text-slate-300 mx-auto mb-2" />
-                        <p className="text-slate-500">You haven&apos;t placed any bids yet.</p>
+            {/* Tabs */}
+            <div className="border-b border-gray-200">
+                <nav className="flex gap-6">
+                    {tabs.map((tab) => (
                         <button
-                            onClick={() => router.push('/')}
-                            className="mt-4 rounded-lg bg-violet-600 px-4 py-2 text-white font-medium hover:bg-violet-700"
+                            key={tab.id}
+                            onClick={() => setActiveTab(tab.id)}
+                            className={`flex items-center gap-2 pb-3 text-sm font-medium border-b-2 transition-colors ${activeTab === tab.id
+                                    ? 'border-indigo-600 text-indigo-600'
+                                    : 'border-transparent text-gray-500 hover:text-gray-700'
+                                }`}
                         >
-                            Browse Auctions
+                            {tab.icon}
+                            {tab.label}
+                            <span className={`px-2 py-0.5 rounded-full text-xs ${activeTab === tab.id ? 'bg-indigo-100 text-indigo-600' : 'bg-gray-100 text-gray-500'
+                                }`}>
+                                {tab.count}
+                            </span>
                         </button>
+                    ))}
+                </nav>
+            </div>
+
+            {/* Tab Content */}
+            {loadingData ? (
+                <div className="flex justify-center py-12">
+                    <Loader2 className="h-8 w-8 animate-spin text-indigo-600" />
+                </div>
+            ) : activeTab === 'auctions' ? (
+                myAuctions.length === 0 ? (
+                    <div className="rounded-xl border border-dashed border-gray-300 bg-gray-50 py-12 text-center">
+                        <Gavel className="h-8 w-8 text-gray-300 mx-auto mb-3" />
+                        <p className="text-gray-500 mb-4">You haven&apos;t created any auctions yet</p>
+                        <Link
+                            href="/auctions/create"
+                            className="inline-flex items-center gap-2 rounded-lg bg-indigo-600 px-4 py-2 text-sm font-medium text-white hover:bg-indigo-700"
+                        >
+                            Create Your First Auction
+                        </Link>
                     </div>
                 ) : (
-                    <div className="grid gap-4 sm:grid-cols-2 lg:grid-cols-3">
-                        {myBids.map((auction) => (
+                    <div className="grid gap-6 sm:grid-cols-2">
+                        {myAuctions.map((auction) => (
                             <AuctionCard
                                 key={auction.id}
                                 auction={auction}
                                 currentUserId={user.id}
+                                onActivate={fetchUserData}
                             />
                         ))}
                     </div>
-                )}
-            </div>
-
-            <p className="text-sm text-slate-500 text-center">
-                💡 Tip: Use the CLI tool (<code className="bg-slate-100 px-1 rounded">python cli.py</code>) to add funds to your account.
-            </p>
+                )
+            ) : myBids.length === 0 ? (
+                <div className="rounded-xl border border-dashed border-gray-300 bg-gray-50 py-12 text-center">
+                    <History className="h-8 w-8 text-gray-300 mx-auto mb-3" />
+                    <p className="text-gray-500 mb-4">You haven&apos;t placed any bids yet</p>
+                    <Link
+                        href="/"
+                        className="inline-flex items-center gap-2 rounded-lg bg-indigo-600 px-4 py-2 text-sm font-medium text-white hover:bg-indigo-700"
+                    >
+                        Browse Auctions
+                    </Link>
+                </div>
+            ) : (
+                <div className="grid gap-6 sm:grid-cols-2">
+                    {myBids.map((auction) => (
+                        <AuctionCard key={auction.id} auction={auction} currentUserId={user.id} />
+                    ))}
+                </div>
+            )}
         </div>
     );
 }
