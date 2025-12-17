@@ -5,7 +5,7 @@ import { api } from '@/lib/api';
 import { Auction } from '@/lib/types';
 import { useUser } from '@/context/UserContext';
 import AuctionCard from '@/components/AuctionCard';
-import { Loader2, Radio, Calendar, CheckCircle, LayoutGrid } from 'lucide-react';
+import { Loader2, Radio, Calendar, CheckCircle, LayoutGrid, Search } from 'lucide-react';
 
 type StatusFilter = 'ALL' | 'LIVE' | 'SCHEDULED' | 'CLOSED';
 
@@ -22,10 +22,25 @@ export default function HomePage() {
   const [isLoading, setIsLoading] = useState(true);
   const [error, setError] = useState<string | null>(null);
   const [filter, setFilter] = useState<StatusFilter>('LIVE');
+  const [searchQuery, setSearchQuery] = useState('');
+  const [debouncedSearch, setDebouncedSearch] = useState('');
+
+  // Debounce search input
+  useEffect(() => {
+    const timer = setTimeout(() => {
+      setDebouncedSearch(searchQuery);
+    }, 300);
+    return () => clearTimeout(timer);
+  }, [searchQuery]);
 
   const fetchAuctions = useCallback(async () => {
     try {
-      const res = await api.get<Auction[]>('/auctions');
+      const params = new URLSearchParams();
+      if (debouncedSearch) params.append('search', debouncedSearch);
+      if (filter !== 'ALL') params.append('status', filter);
+
+      const url = `/auctions${params.toString() ? '?' + params.toString() : ''}`;
+      const res = await api.get<Auction[]>(url);
       setAuctions(res.data);
     } catch (err) {
       console.error('Failed to fetch auctions:', err);
@@ -33,27 +48,38 @@ export default function HomePage() {
     } finally {
       setIsLoading(false);
     }
-  }, []);
+  }, [debouncedSearch, filter]);
 
   useEffect(() => {
     fetchAuctions();
   }, [fetchAuctions]);
 
-  const filteredAuctions = auctions.filter((auction) => {
-    if (filter === 'ALL') return true;
-    return auction.status === filter;
-  });
+  // Get counts by querying without filter
+  const [allAuctions, setAllAuctions] = useState<Auction[]>([]);
+  useEffect(() => {
+    const fetchAll = async () => {
+      try {
+        const params = new URLSearchParams();
+        if (debouncedSearch) params.append('search', debouncedSearch);
+        const res = await api.get<Auction[]>(`/auctions${params.toString() ? '?' + params.toString() : ''}`);
+        setAllAuctions(res.data);
+      } catch (err) {
+        // ignore
+      }
+    };
+    fetchAll();
+  }, [debouncedSearch]);
 
   const getCounts = () => ({
-    LIVE: auctions.filter(a => a.status === 'LIVE').length,
-    SCHEDULED: auctions.filter(a => a.status === 'SCHEDULED').length,
-    CLOSED: auctions.filter(a => a.status === 'CLOSED').length,
-    ALL: auctions.length,
+    LIVE: allAuctions.filter(a => a.status === 'LIVE').length,
+    SCHEDULED: allAuctions.filter(a => a.status === 'SCHEDULED').length,
+    CLOSED: allAuctions.filter(a => a.status === 'CLOSED').length,
+    ALL: allAuctions.length,
   });
 
   const counts = getCounts();
 
-  if (isLoading) {
+  if (isLoading && auctions.length === 0) {
     return (
       <div className="flex h-[60vh] items-center justify-center">
         <div className="text-center">
@@ -92,6 +118,18 @@ export default function HomePage() {
         </div>
       </div>
 
+      {/* Search Bar */}
+      <div className="relative">
+        <Search className="absolute left-3 top-1/2 -translate-y-1/2 h-5 w-5 text-gray-400" />
+        <input
+          type="text"
+          value={searchQuery}
+          onChange={(e) => setSearchQuery(e.target.value)}
+          placeholder="Search auctions by title or description..."
+          className="w-full pl-10 pr-4 py-3 rounded-xl border border-gray-200 bg-white text-gray-900 placeholder-gray-400 focus:border-indigo-500 focus:ring-indigo-500"
+        />
+      </div>
+
       {/* Filter Pills */}
       <div className="flex flex-wrap gap-2">
         {filterConfig.map((item) => (
@@ -99,8 +137,8 @@ export default function HomePage() {
             key={item.value}
             onClick={() => setFilter(item.value)}
             className={`inline-flex items-center gap-2 px-4 py-2 rounded-full text-sm font-medium transition-all ${filter === item.value
-                ? 'bg-gray-900 text-white shadow-md'
-                : 'bg-white text-gray-600 border border-gray-200 hover:border-gray-300 hover:bg-gray-50'
+              ? 'bg-gray-900 text-white shadow-md'
+              : 'bg-white text-gray-600 border border-gray-200 hover:border-gray-300 hover:bg-gray-50'
               }`}
           >
             <span className={filter === item.value ? 'text-white' : item.color}>
@@ -108,8 +146,8 @@ export default function HomePage() {
             </span>
             {item.label}
             <span className={`ml-1 text-xs px-1.5 py-0.5 rounded-full ${filter === item.value
-                ? 'bg-white/20 text-white'
-                : 'bg-gray-100 text-gray-500'
+              ? 'bg-white/20 text-white'
+              : 'bg-gray-100 text-gray-500'
               }`}>
               {counts[item.value]}
             </span>
@@ -118,21 +156,25 @@ export default function HomePage() {
       </div>
 
       {/* Auction Grid */}
-      {filteredAuctions.length === 0 ? (
+      {auctions.length === 0 ? (
         <div className="rounded-xl border border-dashed border-gray-300 bg-gray-50 py-16 text-center">
           <div className="mx-auto w-12 h-12 rounded-full bg-gray-100 flex items-center justify-center mb-4">
-            {filterConfig.find(f => f.value === filter)?.icon}
+            {debouncedSearch ? <Search className="h-5 w-5 text-gray-400" /> : filterConfig.find(f => f.value === filter)?.icon}
           </div>
-          <h3 className="text-gray-900 font-medium mb-1">No {filter.toLowerCase()} auctions</h3>
+          <h3 className="text-gray-900 font-medium mb-1">
+            {debouncedSearch ? 'No matches found' : `No ${filter.toLowerCase()} auctions`}
+          </h3>
           <p className="text-gray-500 text-sm">
-            {filter === 'LIVE'
-              ? 'Check back soon or browse upcoming auctions'
-              : 'Try a different filter'}
+            {debouncedSearch
+              ? 'Try a different search term'
+              : filter === 'LIVE'
+                ? 'Check back soon or browse upcoming auctions'
+                : 'Try a different filter'}
           </p>
         </div>
       ) : (
         <div className="grid gap-6 sm:grid-cols-2 lg:grid-cols-3">
-          {filteredAuctions.map((auction) => (
+          {auctions.map((auction) => (
             <AuctionCard
               key={auction.id}
               auction={auction}

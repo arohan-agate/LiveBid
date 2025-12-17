@@ -13,4 +13,5 @@ public class BidPlacedEvent {
     private UUID auctionId;
     private long newPrice;
     private UUID newLeaderId;
+    private UUID previousLeaderId; // For outbid notifications
 }

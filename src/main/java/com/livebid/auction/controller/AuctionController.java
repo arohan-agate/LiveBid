@@ -27,8 +27,18 @@ public class AuctionController {
     }
 
     @GetMapping
-    public java.util.List<AuctionResponse> getAllAuctions() {
-        return auctionService.getAllAuctions();
+    public java.util.List<AuctionResponse> getAllAuctions(
+            @RequestParam(required = false) String search,
+            @RequestParam(required = false) String status) {
+        com.livebid.auction.model.AuctionStatus auctionStatus = null;
+        if (status != null && !status.isBlank()) {
+            try {
+                auctionStatus = com.livebid.auction.model.AuctionStatus.valueOf(status.toUpperCase());
+            } catch (IllegalArgumentException e) {
+                // Invalid status, ignore
+            }
+        }
+        return auctionService.searchAuctions(search, auctionStatus);
     }
 
     @PostMapping("/{id}/start")

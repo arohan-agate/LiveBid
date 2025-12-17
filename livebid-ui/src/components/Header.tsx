@@ -6,6 +6,7 @@ import { useUser } from '@/context/UserContext';
 import { formatCurrency } from '@/lib/api';
 import { Gavel, Plus, LogOut, ChevronDown } from 'lucide-react';
 import { useState, useRef, useEffect } from 'react';
+import NotificationBell from './NotificationBell';
 
 export default function Header() {
     const pathname = usePathname();
@@ -51,8 +52,8 @@ export default function Header() {
                                 key={link.href}
                                 href={link.href}
                                 className={`px-4 py-2 rounded-lg text-sm font-medium transition-colors ${pathname === link.href
-                                        ? 'bg-gray-100 text-gray-900'
-                                        : 'text-gray-600 hover:text-gray-900 hover:bg-gray-50'
+                                    ? 'bg-gray-100 text-gray-900'
+                                    : 'text-gray-600 hover:text-gray-900 hover:bg-gray-50'
                                     }`}
                             >
                                 {link.label}
@@ -64,6 +65,9 @@ export default function Header() {
                     <div className="flex items-center gap-3">
                         {user ? (
                             <>
+                                {/* Notifications */}
+                                <NotificationBell />
+
                                 {/* Mobile: Create Button */}
                                 <Link
                                     href="/auctions/create"
@@ -131,20 +135,12 @@ export default function Header() {
                                 </div>
                             </>
                         ) : (
-                            <div className="flex items-center gap-2">
-                                <Link
-                                    href="/auth"
-                                    className="px-4 py-2 text-sm font-medium text-gray-700 hover:text-gray-900"
-                                >
-                                    Sign In
-                                </Link>
-                                <Link
-                                    href="/auth"
-                                    className="px-4 py-2 rounded-lg bg-indigo-600 text-sm font-medium text-white hover:bg-indigo-700 transition-colors"
-                                >
-                                    Get Started
-                                </Link>
-                            </div>
+                            <Link
+                                href="/auth"
+                                className="px-4 py-2 rounded-lg bg-indigo-600 text-sm font-medium text-white hover:bg-indigo-700 transition-colors"
+                            >
+                                Sign In
+                            </Link>
                         )}
                     </div>
                 </div>

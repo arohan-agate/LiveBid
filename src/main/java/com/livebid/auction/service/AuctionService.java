@@ -102,6 +102,19 @@ public class AuctionService {
                 .collect(java.util.stream.Collectors.toList());
     }
 
+    @Transactional(readOnly = true)
+    public java.util.List<AuctionResponse> searchAuctions(String query, AuctionStatus status) {
+        java.util.List<Auction> auctions;
+        if (query == null || query.isBlank()) {
+            auctions = status == null ? auctionRepository.findAll() : auctionRepository.findByStatus(status);
+        } else if (status == null) {
+            auctions = auctionRepository.searchByTitleOrDescription(query);
+        } else {
+            auctions = auctionRepository.searchByTitleOrDescriptionAndStatus(query, status);
+        }
+        return auctions.stream().map(this::mapToResponse).collect(java.util.stream.Collectors.toList());
+    }
+
     // Helper to map Auction to AuctionResponse
     private AuctionResponse mapToResponse(Auction auction) {
         return new AuctionResponse(
@@ -153,8 +166,7 @@ public class AuctionService {
             throw new IllegalArgumentException("Bid must be higher than current price: " + auction.getCurrentPrice());
         }
 
-        // Minimum increment: 5% of current price OR $1 (100 cents), whichever is
-        // greater
+        // Minimum increment: max(5% of current price, $1)
         long minIncrement = Math.max((long) (auction.getCurrentPrice() * 0.05), 100);
         long minBid = auction.getCurrentPrice() + minIncrement;
         if (amount < minBid) {
@@ -166,21 +178,24 @@ public class AuctionService {
             throw new IllegalArgumentException("Insufficient funds");
         }
 
+        // Capture previous leader for outbid notification
+        UUID previousLeaderId = auction.getCurrentLeaderId();
+
         bidder.setAvailableBalance(bidder.getAvailableBalance() - amount);
         bidder.setReservedBalance(bidder.getReservedBalance() + amount);
         userRepository.save(bidder);
         eventPublisher.publishEvent(
                 new UserBalanceChangedEvent(bidderId, bidder.getAvailableBalance(), bidder.getReservedBalance()));
 
-        if (auction.getCurrentLeaderId() != null) {
-            User prevLeader = userRepository.findByIdWithLock(auction.getCurrentLeaderId())
+        if (previousLeaderId != null) {
+            User prevLeader = userRepository.findByIdWithLock(previousLeaderId)
                     .orElseThrow(() -> new IllegalStateException("Data corruption: Leader ID exists but User missing"));
 
             long refundAmount = auction.getCurrentPrice();
             prevLeader.setReservedBalance(prevLeader.getReservedBalance() - refundAmount);
             prevLeader.setAvailableBalance(prevLeader.getAvailableBalance() + refundAmount);
             userRepository.save(prevLeader);
-            eventPublisher.publishEvent(new UserBalanceChangedEvent(auction.getCurrentLeaderId(),
+            eventPublisher.publishEvent(new UserBalanceChangedEvent(previousLeaderId,
                     prevLeader.getAvailableBalance(), prevLeader.getReservedBalance()));
         }
 
@@ -197,7 +212,7 @@ public class AuctionService {
         auctionRepository.save(auction);
 
         // event for real-time updates
-        eventPublisher.publishEvent(new BidPlacedEvent(auctionId, amount, bidderId));
+        eventPublisher.publishEvent(new BidPlacedEvent(auctionId, amount, bidderId, previousLeaderId));
     }
 
     @Transactional

@@ -3,11 +3,13 @@
 import { useRouter } from 'next/navigation';
 import { useUser } from '@/context/UserContext';
 import { formatCurrency, api } from '@/lib/api';
-import { Auction } from '@/lib/types';
+import { Auction, Settlement } from '@/lib/types';
 import AuctionCard from '@/components/AuctionCard';
-import { Copy, Check, Gavel, History, Loader2, Wallet, ArrowLeft } from 'lucide-react';
+import { Copy, Check, Gavel, History, Loader2, Wallet, ArrowLeft, ShoppingBag, DollarSign } from 'lucide-react';
 import { useState, useEffect, useCallback } from 'react';
 import Link from 'next/link';
+
+type TabId = 'auctions' | 'bids' | 'sales' | 'purchases';
 
 export default function ProfilePage() {
     const router = useRouter();
@@ -15,19 +17,25 @@ export default function ProfilePage() {
     const [copied, setCopied] = useState(false);
     const [myAuctions, setMyAuctions] = useState<Auction[]>([]);
     const [myBids, setMyBids] = useState<Auction[]>([]);
+    const [mySales, setMySales] = useState<Settlement[]>([]);
+    const [myPurchases, setMyPurchases] = useState<Settlement[]>([]);
     const [loadingData, setLoadingData] = useState(true);
-    const [activeTab, setActiveTab] = useState<'auctions' | 'bids'>('auctions');
+    const [activeTab, setActiveTab] = useState<TabId>('auctions');
 
     const fetchUserData = useCallback(async () => {
         if (!user) return;
         setLoadingData(true);
         try {
-            const [auctionsRes, bidsRes] = await Promise.all([
+            const [auctionsRes, bidsRes, salesRes, purchasesRes] = await Promise.all([
                 api.get<Auction[]>(`/users/${user.id}/auctions`),
                 api.get<Auction[]>(`/users/${user.id}/bids`),
+                api.get<Settlement[]>(`/users/${user.id}/sales`),
+                api.get<Settlement[]>(`/users/${user.id}/purchases`),
             ]);
             setMyAuctions(auctionsRes.data);
             setMyBids(bidsRes.data);
+            setMySales(salesRes.data);
+            setMyPurchases(purchasesRes.data);
         } catch (err) {
             console.error('Failed to fetch user data:', err);
         } finally {
@@ -63,7 +71,71 @@ export default function ProfilePage() {
     const tabs = [
         { id: 'auctions' as const, label: 'My Auctions', count: myAuctions.length, icon: <Gavel className="h-4 w-4" /> },
         { id: 'bids' as const, label: 'My Bids', count: myBids.length, icon: <History className="h-4 w-4" /> },
+        { id: 'sales' as const, label: 'My Sales', count: mySales.length, icon: <DollarSign className="h-4 w-4" /> },
+        { id: 'purchases' as const, label: 'My Purchases', count: myPurchases.length, icon: <ShoppingBag className="h-4 w-4" /> },
     ];
+
+    const formatDate = (dateString: string) => {
+        return new Date(dateString).toLocaleDateString('en-US', {
+            month: 'short',
+            day: 'numeric',
+            year: 'numeric',
+        });
+    };
+
+    const renderSettlementList = (settlements: Settlement[], isSale: boolean) => {
+        if (settlements.length === 0) {
+            return (
+                <div className="rounded-xl border border-dashed border-gray-300 bg-gray-50 py-12 text-center">
+                    {isSale ? (
+                        <DollarSign className="h-8 w-8 text-gray-300 mx-auto mb-3" />
+                    ) : (
+                        <ShoppingBag className="h-8 w-8 text-gray-300 mx-auto mb-3" />
+                    )}
+                    <p className="text-gray-500 mb-4">
+                        {isSale ? "You haven't sold anything yet" : "You haven't purchased anything yet"}
+                    </p>
+                    <Link
+                        href="/"
+                        className="inline-flex items-center gap-2 rounded-lg bg-indigo-600 px-4 py-2 text-sm font-medium text-white hover:bg-indigo-700"
+                    >
+                        Browse Auctions
+                    </Link>
+                </div>
+            );
+        }
+
+        return (
+            <div className="space-y-3">
+                {settlements.map((settlement) => (
+                    <Link
+                        key={settlement.id}
+                        href={`/auctions/${settlement.auctionId}`}
+                        className="flex items-center justify-between p-4 rounded-xl bg-white border border-gray-200 hover:border-gray-300 transition-colors"
+                    >
+                        <div className="flex items-center gap-4">
+                            <div className={`h-10 w-10 rounded-lg flex items-center justify-center ${isSale ? 'bg-green-100' : 'bg-red-100'}`}>
+                                {isSale ? (
+                                    <DollarSign className="h-5 w-5 text-green-600" />
+                                ) : (
+                                    <ShoppingBag className="h-5 w-5 text-red-600" />
+                                )}
+                            </div>
+                            <div>
+                                <p className="font-medium text-gray-900">{settlement.auctionTitle}</p>
+                                <p className="text-sm text-gray-500">
+                                    {isSale ? 'Sold to' : 'Bought from'} {settlement.counterpartyEmail} • {formatDate(settlement.createdAt)}
+                                </p>
+                            </div>
+                        </div>
+                        <div className={`text-lg font-bold ${isSale ? 'text-green-600' : 'text-red-600'}`}>
+                            {isSale ? '+' : '-'}{formatCurrency(settlement.amount)}
+                        </div>
+                    </Link>
+                ))}
+            </div>
+        );
+    };
 
     return (
         <div className="max-w-4xl mx-auto space-y-8">
@@ -134,12 +206,12 @@ export default function ProfilePage() {
 
             {/* Tabs */}
             <div className="border-b border-gray-200">
-                <nav className="flex gap-6">
+                <nav className="flex gap-6 overflow-x-auto">
                     {tabs.map((tab) => (
                         <button
                             key={tab.id}
                             onClick={() => setActiveTab(tab.id)}
-                            className={`flex items-center gap-2 pb-3 text-sm font-medium border-b-2 transition-colors ${activeTab === tab.id
+                            className={`flex items-center gap-2 pb-3 text-sm font-medium border-b-2 transition-colors whitespace-nowrap ${activeTab === tab.id
                                 ? 'border-indigo-600 text-indigo-600'
                                 : 'border-transparent text-gray-500 hover:text-gray-700'
                                 }`}
@@ -184,23 +256,29 @@ export default function ProfilePage() {
                         ))}
                     </div>
                 )
-            ) : myBids.length === 0 ? (
-                <div className="rounded-xl border border-dashed border-gray-300 bg-gray-50 py-12 text-center">
-                    <History className="h-8 w-8 text-gray-300 mx-auto mb-3" />
-                    <p className="text-gray-500 mb-4">You haven&apos;t placed any bids yet</p>
-                    <Link
-                        href="/"
-                        className="inline-flex items-center gap-2 rounded-lg bg-indigo-600 px-4 py-2 text-sm font-medium text-white hover:bg-indigo-700"
-                    >
-                        Browse Auctions
-                    </Link>
-                </div>
+            ) : activeTab === 'bids' ? (
+                myBids.length === 0 ? (
+                    <div className="rounded-xl border border-dashed border-gray-300 bg-gray-50 py-12 text-center">
+                        <History className="h-8 w-8 text-gray-300 mx-auto mb-3" />
+                        <p className="text-gray-500 mb-4">You haven&apos;t placed any bids yet</p>
+                        <Link
+                            href="/"
+                            className="inline-flex items-center gap-2 rounded-lg bg-indigo-600 px-4 py-2 text-sm font-medium text-white hover:bg-indigo-700"
+                        >
+                            Browse Auctions
+                        </Link>
+                    </div>
+                ) : (
+                    <div className="grid gap-6 sm:grid-cols-2">
+                        {myBids.map((auction) => (
+                            <AuctionCard key={auction.id} auction={auction} currentUserId={user.id} />
+                        ))}
+                    </div>
+                )
+            ) : activeTab === 'sales' ? (
+                renderSettlementList(mySales, true)
             ) : (
-                <div className="grid gap-6 sm:grid-cols-2">
-                    {myBids.map((auction) => (
-                        <AuctionCard key={auction.id} auction={auction} currentUserId={user.id} />
-                    ))}
-                </div>
+                renderSettlementList(myPurchases, false)
             )}
         </div>
     );

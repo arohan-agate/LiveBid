@@ -37,3 +37,23 @@ export interface UserBalanceChangedEvent {
     availableBalance: number;
     reservedBalance: number;
 }
+
+export interface Settlement {
+    id: string;
+    auctionId: string;
+    auctionTitle: string;
+    counterpartyId: string;
+    counterpartyEmail: string;
+    amount: number;
+    createdAt: string;
+}
+
+export interface Notification {
+    id: string;
+    userId: string;
+    type: 'OUTBID' | 'AUCTION_WON' | 'SALE_COMPLETE' | 'AUCTION_STARTED';
+    message: string;
+    auctionId: string | null;
+    read: boolean;
+    createdAt: string;
+}

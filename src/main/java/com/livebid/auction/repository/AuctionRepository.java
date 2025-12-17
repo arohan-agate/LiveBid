@@ -28,4 +28,12 @@ public interface AuctionRepository extends JpaRepository<Auction, UUID> {
     @Modifying
     @Query("UPDATE Auction a SET a.status = 'CLOSING' WHERE a.id = :id AND a.status = 'LIVE' AND a.endTime < :now")
     int updateStatusToClosing(@Param("id") UUID id, @Param("now") java.time.LocalDateTime now);
+
+    // Search methods
+    @Query("SELECT a FROM Auction a WHERE (LOWER(a.title) LIKE LOWER(CONCAT('%', :query, '%')) OR LOWER(a.description) LIKE LOWER(CONCAT('%', :query, '%')))")
+    List<Auction> searchByTitleOrDescription(@Param("query") String query);
+
+    @Query("SELECT a FROM Auction a WHERE a.status = :status AND (LOWER(a.title) LIKE LOWER(CONCAT('%', :query, '%')) OR LOWER(a.description) LIKE LOWER(CONCAT('%', :query, '%')))")
+    List<Auction> searchByTitleOrDescriptionAndStatus(@Param("query") String query,
+            @Param("status") AuctionStatus status);
 }

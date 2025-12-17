@@ -143,9 +143,6 @@ export default function CreateAuctionPage() {
                         {isSubmitting && <Loader2 className="h-5 w-5 animate-spin" />}
                         Create Auction
                     </button>
-                    <p className="mt-3 text-xs text-slate-500 text-center">
-                        After creation, use the CLI to start the auction (make it LIVE).
-                    </p>
                 </div>
             </form>
         </div>
