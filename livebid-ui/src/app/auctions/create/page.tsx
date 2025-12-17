@@ -1,6 +1,6 @@
 'use client';
 
-import { useState } from 'react';
+import { useState, useEffect } from 'react';
 import { useRouter } from 'next/navigation';
 import { api } from '@/lib/api';
 import { useUser } from '@/context/UserContext';
@@ -21,12 +21,13 @@ export default function CreateAuctionPage() {
     const [error, setError] = useState('');
 
     // Redirect if not logged in
-    if (!userLoading && !user) {
-        router.push('/auth');
-        return null;
-    }
+    useEffect(() => {
+        if (!userLoading && !user) {
+            router.push('/auth');
+        }
+    }, [userLoading, user, router]);
 
-    if (userLoading) {
+    if (userLoading || !user) {
         return (
             <div className="flex h-[50vh] items-center justify-center">
                 <Loader2 className="h-8 w-8 animate-spin text-violet-600" />
