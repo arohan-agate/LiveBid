@@ -79,10 +79,18 @@ export default function AuctionCard({ auction, currentUserId, onActivate }: Auct
             className="group block rounded-xl bg-white border border-gray-200 overflow-hidden hover:shadow-lg hover:border-gray-300 transition-all duration-200"
         >
             {/* Image */}
-            <div className="relative aspect-[16/10] bg-gradient-to-br from-gray-100 to-gray-50">
-                <div className="absolute inset-0 flex items-center justify-center">
-                    <div className="text-4xl opacity-20">🏷️</div>
-                </div>
+            <div className="relative aspect-[16/10] bg-gradient-to-br from-gray-100 to-gray-50 overflow-hidden">
+                {auction.imageUrl ? (
+                    <img
+                        src={auction.imageUrl}
+                        alt={auction.title}
+                        className="w-full h-full object-cover group-hover:scale-105 transition-transform duration-300"
+                    />
+                ) : (
+                    <div className="absolute inset-0 flex items-center justify-center">
+                        <div className="text-4xl opacity-20">🏷️</div>
+                    </div>
+                )}
 
                 {/* Status Badge */}
                 <div className="absolute top-3 left-3">

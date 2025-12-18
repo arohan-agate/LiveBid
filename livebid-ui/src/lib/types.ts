@@ -11,6 +11,8 @@ export interface Auction {
     startTime: string;
     endTime: string;
     status: 'SCHEDULED' | 'LIVE' | 'CLOSING' | 'CLOSED';
+    imageKey: string | null;
+    imageUrl: string | null;
 }
 
 export interface User {

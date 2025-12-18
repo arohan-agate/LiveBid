@@ -6,6 +6,7 @@ import { api } from '@/lib/api';
 import { useUser } from '@/context/UserContext';
 import { Auction } from '@/lib/types';
 import { Loader2, Gavel } from 'lucide-react';
+import ImageUpload from '@/components/ImageUpload';
 
 export default function CreateAuctionPage() {
     const router = useRouter();
@@ -16,6 +17,7 @@ export default function CreateAuctionPage() {
         description: '',
         startPrice: 1000,
         durationMinutes: 5,
+        imageKey: '',
     });
     const [isSubmitting, setIsSubmitting] = useState(false);
     const [error, setError] = useState('');
@@ -50,6 +52,7 @@ export default function CreateAuctionPage() {
             startPrice: formData.startPrice,
             startTime: now.toISOString(),
             endTime: endTime.toISOString(),
+            imageKey: formData.imageKey || null,
         };
 
         try {
@@ -62,6 +65,10 @@ export default function CreateAuctionPage() {
         } finally {
             setIsSubmitting(false);
         }
+    };
+
+    const handleImageUpload = (key: string) => {
+        setFormData({ ...formData, imageKey: key });
     };
 
     return (
@@ -78,6 +85,9 @@ export default function CreateAuctionPage() {
             )}
 
             <form onSubmit={handleSubmit} className="space-y-6 rounded-xl border border-slate-200 bg-white p-6 shadow-sm">
+                {/* Image Upload */}
+                <ImageUpload onUploadComplete={handleImageUpload} />
+
                 <div>
                     <label className="block text-sm font-medium text-slate-700 mb-1">Title</label>
                     <input

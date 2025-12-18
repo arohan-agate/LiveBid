@@ -178,8 +178,16 @@ export default function AuctionDetailPage() {
                 {/* LEFT: Details */}
                 <div className="lg:col-span-3 space-y-6">
                     {/* Image */}
-                    <div className="aspect-video rounded-xl bg-gradient-to-br from-gray-100 to-gray-50 flex items-center justify-center border border-gray-200">
-                        <span className="text-6xl opacity-20">🏷️</span>
+                    <div className="aspect-video rounded-xl bg-gradient-to-br from-gray-100 to-gray-50 flex items-center justify-center border border-gray-200 overflow-hidden">
+                        {auction.imageUrl ? (
+                            <img
+                                src={auction.imageUrl}
+                                alt={auction.title}
+                                className="w-full h-full object-cover"
+                            />
+                        ) : (
+                            <span className="text-6xl opacity-20">🏷️</span>
+                        )}
                     </div>
 
                     {/* Info */}
