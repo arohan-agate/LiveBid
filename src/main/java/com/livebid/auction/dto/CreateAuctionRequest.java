@@ -13,5 +13,6 @@ public record CreateAuctionRequest(
         String description,
         @Min(1) long startPrice,
         @NotNull LocalDateTime startTime,
-        @NotNull @Future LocalDateTime endTime) {
+        @NotNull @Future LocalDateTime endTime,
+        String imageKey) {
 }

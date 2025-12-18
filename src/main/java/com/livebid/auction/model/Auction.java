@@ -48,6 +48,9 @@ public class Auction {
     @Column(name = "current_leader_bid_id")
     private UUID currentLeaderBidId;
 
+    @Column(name = "image_key")
+    private String imageKey;
+
     @Version // Optimistic Locking
     private Long version;
 }

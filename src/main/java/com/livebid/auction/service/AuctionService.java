@@ -28,15 +28,18 @@ public class AuctionService {
     private final BidRepository bidRepository;
     private final ApplicationEventPublisher eventPublisher;
     private final AuctionSettlementRepository auctionSettlementRepository;
+    private final com.livebid.image.service.ImageService imageService;
 
     public AuctionService(AuctionRepository auctionRepository, UserRepository userRepository,
             BidRepository bidRepository, ApplicationEventPublisher eventPublisher,
-            AuctionSettlementRepository auctionSettlementRepository) {
+            AuctionSettlementRepository auctionSettlementRepository,
+            com.livebid.image.service.ImageService imageService) {
         this.auctionRepository = auctionRepository;
         this.userRepository = userRepository;
         this.bidRepository = bidRepository;
         this.eventPublisher = eventPublisher;
         this.auctionSettlementRepository = auctionSettlementRepository;
+        this.imageService = imageService;
     }
 
     @Transactional
@@ -62,6 +65,7 @@ public class AuctionService {
         auction.setCurrentPrice(request.startPrice());
         auction.setCurrentLeaderId(null);
         auction.setCurrentLeaderBidId(null);
+        auction.setImageKey(request.imageKey());
 
         Auction savedAuction = auctionRepository.save(auction);
         return mapToResponse(savedAuction);
@@ -127,7 +131,9 @@ public class AuctionService {
                 auction.getCurrentLeaderId(),
                 auction.getStartTime(),
                 auction.getEndTime(),
-                auction.getStatus());
+                auction.getStatus(),
+                auction.getImageKey(),
+                imageService.getImageUrl(auction.getImageKey()));
     }
 
     @Transactional

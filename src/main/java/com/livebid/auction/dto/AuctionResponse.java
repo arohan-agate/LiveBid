@@ -14,5 +14,7 @@ public record AuctionResponse(
         UUID currentLeaderId,
         LocalDateTime startTime,
         LocalDateTime endTime,
-        AuctionStatus status) {
+        AuctionStatus status,
+        String imageKey,
+        String imageUrl) {
 }
