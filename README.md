@@ -5,75 +5,93 @@
 ## Key Features
 
 - **Real-Time Bidding**: Instant updates for all participants via WebSocket.
-- **Financial Safety**: robust escrow system that reserves funds upon bidding and refunds outbid users instantly.
-- **Transactional Integrity**: Pessimistic locking guarantees that no two bids conflict, even under high concurrency.
-- **Automated Settlement**: Auctions close automatically, and funds are transferred to the seller immediately.
-- **Simulation Tools**: Includes a CLI for simulating bidding wars and stress testing the engine.
+- **Image Uploads**: Direct browser-to-S3 uploads with pre-signed URLs.
+- **Google OAuth**: Sign in with Google for seamless authentication.
+- **Notifications**: Real-time alerts for outbid, auction won, and sale complete events.
+- **Search & Filters**: Search auctions by title/description with status filters.
+- **Financial Safety**: Escrow system that reserves funds upon bidding and refunds outbid users instantly.
+- **Automated Settlement**: Auctions close automatically with funds transferred to sellers.
 
 ## Tech Stack
 
-- **Core**: Java 21, Spring Boot 3
-- **Data**: PostgreSQL (Persistence), Redis (Caching & Pub/Sub)
-- **Messaging**: WebSocket
-- **Containerization**: Docker & Docker Compose
+| Layer | Technology |
+|-------|------------|
+| **Backend** | Java 21, Spring Boot 3.2 |
+| **Frontend** | Next.js 14, TypeScript, TailwindCSS |
+| **Database** | PostgreSQL |
+| **Cache** | Redis |
+| **Storage** | AWS S3 |
+| **Real-time** | WebSocket (STOMP/SockJS) |
+| **Auth** | JWT, Google OAuth |
 
 ## Quick Start
 
 ### 1. Prerequisites
 - Docker & Docker Compose
-- Java 21 (optional, for local dev)
-- Python 3 (optional, for CLI)
+- Java 21
+- Node.js 18+
+- AWS Account (for S3)
 
-### 2. Launch Infrastructure
-Start the database and caching services:
+### 2. Environment Setup
+Create a `.env` file in the project root:
+```bash
+# Database (optional, uses defaults)
+SPRING_DATASOURCE_URL=jdbc:postgresql://localhost:5432/livebid
+
+# AWS S3
+AWS_ACCESS_KEY_ID=your_access_key
+AWS_SECRET_ACCESS_KEY=your_secret_key
+AWS_REGION=us-east-2
+S3_BUCKET_NAME=your-bucket-name
+
+# Auth
+JWT_SECRET=your_jwt_secret
+GOOGLE_CLIENT_ID=your_google_client_id
+```
+
+### 3. Launch Infrastructure
 ```bash
 docker-compose up -d
 ```
 
-### 3. Run the Application
-You can run the application directly using Maven:
+### 4. Run Backend
 ```bash
-# MacOS/Linux
-./mvnw spring-boot:run
+export $(cat .env | xargs) && ./mvnw spring-boot:run
 ```
+Server starts at `http://localhost:8080`
 
-The server will start on `http://localhost:8080`.
-
-### 4. Run the Frontend
-Navigate to `livebid-ui` and start the dev server:
+### 5. Run Frontend
 ```bash
 cd livebid-ui
 npm install
 npm run dev
 ```
-Open [http://localhost:3000](http://localhost:3000) to view the app.
-
-## Usage & Tools
-
-### Interactive CLI
-We provide a powerful CLI tool to simulate users and auctions.
-```bash
-# Navigate to project root
-pip install -r requirements.txt
-python cli.py
-```
-**Features**:
-- Create Users with toy balances.
-- Start/View Auctions.
-- **Simulate Bid War**: Spawns multiple bot bidders to stress test the system.
-
-### Real-Time Client
-Open `test-client.html` in your web browser to connect to the WebSocket stream and view live updates as they happen.
+Open [http://localhost:3000](http://localhost:3000)
 
 ## API Documentation
-The API is designed around RESTful principles.
 
 | Method | Endpoint | Description |
 |--------|----------|-------------|
-| POST | `/users` | Create a new user |
-| POST | `/auctions` | Create a new auction |
-| POST | `/auctions/{id}/start` | Open an auction for bidding |
-| POST | `/auctions/{id}/bids` | Place a bid (requires valid user) |
-| GET | `/auctions/{id}` | Get real-time auction status |
+| POST | `/auth/google` | Authenticate with Google |
+| POST | `/auctions` | Create auction (with optional imageKey) |
+| POST | `/auctions/{id}/start` | Activate auction |
+| POST | `/auctions/{id}/bids` | Place a bid |
+| GET | `/auctions?search=&status=` | Search auctions |
+| POST | `/images/upload-url` | Get pre-signed S3 upload URL |
+| GET | `/users/{id}/notifications` | Get user notifications |
+
+## Project Structure
+
+```
+LiveBid/
+├── src/main/java/com/livebid/
+│   ├── auction/          # Auction, Bid, Settlement logic
+│   ├── user/             # User management
+│   ├── notification/     # Notification system
+│   ├── image/            # S3 image upload service
+│   └── infrastructure/   # Security, Config, WebSocket
+├── livebid-ui/           # Next.js frontend
+└── docker-compose.yml    # Postgres, Redis
+```
 
 ---
