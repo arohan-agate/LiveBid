@@ -30,6 +30,7 @@ public class SecurityConfig {
                         // Public endpoints
                         .requestMatchers("/auth/**").permitAll()
                         .requestMatchers("/ws/**").permitAll()
+                        .requestMatchers("/images/**").permitAll()
                         .requestMatchers(HttpMethod.GET, "/auctions/**").permitAll()
                         .requestMatchers(HttpMethod.GET, "/users/**").permitAll()
                         // Protected endpoints
