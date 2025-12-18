@@ -2,8 +2,10 @@ package com.livebid.image.service;
 
 import org.springframework.beans.factory.annotation.Value;
 import org.springframework.stereotype.Service;
+import software.amazon.awssdk.services.s3.model.GetObjectRequest;
 import software.amazon.awssdk.services.s3.model.PutObjectRequest;
 import software.amazon.awssdk.services.s3.presigner.S3Presigner;
+import software.amazon.awssdk.services.s3.presigner.model.GetObjectPresignRequest;
 import software.amazon.awssdk.services.s3.presigner.model.PutObjectPresignRequest;
 
 import java.time.Duration;
@@ -27,10 +29,6 @@ public class ImageService {
      * Generate a pre-signed URL for uploading an image to S3.
      * The URL is valid for 5 minutes and allows a direct PUT request from the
      * browser.
-     *
-     * @param key         The S3 object key (path within bucket)
-     * @param contentType The MIME type of the file (e.g., "image/jpeg")
-     * @return Pre-signed PUT URL
      */
     public String generateUploadUrl(String key, String contentType) {
         PutObjectRequest putRequest = PutObjectRequest.builder()
@@ -48,15 +46,26 @@ public class ImageService {
     }
 
     /**
-     * Get the public URL for viewing an uploaded image.
-     *
-     * @param key The S3 object key
-     * @return Public S3 URL
+     * Generate a pre-signed URL for viewing an uploaded image.
+     * Since the bucket has "Block all public access" enabled, we need pre-signed
+     * URLs for reading too.
+     * The URL is valid for 1 hour.
      */
     public String getImageUrl(String key) {
         if (key == null || key.isEmpty()) {
             return null;
         }
-        return String.format("https://%s.s3.%s.amazonaws.com/%s", bucketName, region, key);
+
+        GetObjectRequest getRequest = GetObjectRequest.builder()
+                .bucket(bucketName)
+                .key(key)
+                .build();
+
+        GetObjectPresignRequest presignRequest = GetObjectPresignRequest.builder()
+                .signatureDuration(Duration.ofHours(1))
+                .getObjectRequest(getRequest)
+                .build();
+
+        return presigner.presignGetObject(presignRequest).url().toString();
     }
 }
