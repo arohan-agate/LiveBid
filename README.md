@@ -68,6 +68,11 @@ npm run dev
 ```
 Open [http://localhost:3000](http://localhost:3000)
 
+## Deployment
+
+See [DEPLOYMENT.md](DEPLOYMENT.md) for a step-by-step guide to hosting the full stack for free
+(Vercel + Render + Neon, keeping the existing S3 bucket).
+
 ## API Documentation
 
 | Method | Endpoint | Description |

@@ -2,7 +2,7 @@ import SockJS from 'sockjs-client';
 import { Client, IMessage } from '@stomp/stompjs';
 import { BidPlacedEvent, AuctionClosedEvent } from './types';
 
-const WS_URL = 'http://localhost:8080/ws';
+const WS_URL = `${process.env.NEXT_PUBLIC_API_URL || 'http://localhost:8080'}/ws`;
 
 /**
  * Connect to a specific auction's WebSocket topic.

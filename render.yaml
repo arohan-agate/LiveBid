@@ -1,0 +1,53 @@
+# Render Blueprint — creates the LiveBid backend + Redis with one click.
+# In the Render dashboard: New > Blueprint > select this repo.
+# Docs: https://render.com/docs/blueprint-spec
+services:
+  # Spring Boot API (built from the Dockerfile at the repo root)
+  - type: web
+    name: livebid-api
+    runtime: docker
+    plan: free
+    region: oregon
+    healthCheckPath: /auctions
+    envVars:
+      # --- Fill these in when Render prompts (values from your local .env / Neon dashboard) ---
+      - key: SPRING_DATASOURCE_URL # Neon JDBC URL: jdbc:postgresql://<host>/<db>?sslmode=require
+        sync: false
+      - key: SPRING_DATASOURCE_USERNAME
+        sync: false
+      - key: SPRING_DATASOURCE_PASSWORD
+        sync: false
+      - key: GOOGLE_CLIENT_ID
+        sync: false
+      - key: AWS_ACCESS_KEY_ID
+        sync: false
+      - key: AWS_SECRET_ACCESS_KEY
+        sync: false
+      # --- Auto-wired / fixed values ---
+      - key: JWT_SECRET
+        generateValue: true # Render generates a strong random secret
+      - key: AWS_REGION
+        value: us-east-2
+      - key: S3_BUCKET_NAME
+        value: livebid-auction-images
+      - key: LOG_LEVEL_SQL
+        value: WARN
+      - key: LOG_LEVEL_APP
+        value: INFO
+      - key: SPRING_DATA_REDIS_HOST
+        fromService:
+          type: keyvalue
+          name: livebid-redis
+          property: host
+      - key: SPRING_DATA_REDIS_PORT
+        fromService:
+          type: keyvalue
+          name: livebid-redis
+          property: port
+
+  # Redis-compatible cache (free tier: 25MB, in-region private network, no TLS needed)
+  - type: keyvalue
+    name: livebid-redis
+    plan: free
+    region: oregon
+    ipAllowList: [] # internal connections only

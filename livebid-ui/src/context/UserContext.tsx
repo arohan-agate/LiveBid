@@ -23,7 +23,7 @@ interface UserContextType {
 
 const UserContext = createContext<UserContextType | undefined>(undefined);
 
-const WS_URL = 'http://localhost:8080/ws';
+const WS_URL = `${process.env.NEXT_PUBLIC_API_URL || 'http://localhost:8080'}/ws`;
 
 export function UserProvider({ children }: { children: ReactNode }) {
     const [user, setUser] = useState<User | null>(null);
